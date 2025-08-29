@@ -1,0 +1,198 @@
+'use client'
+
+import { useCallback, useState } from 'react'
+import { useDropzone } from 'react-dropzone'
+import { Video } from '@/lib/types'
+
+// API base URL - configurable for different environments
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+
+interface VideoUploadProps {
+  onVideoUploaded: (video: Video) => void
+}
+
+export default function VideoUpload({ onVideoUploaded }: VideoUploadProps) {
+  const [uploading, setUploading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [status, setStatus] = useState<string>('')
+
+  const MAX_SIZE = 500 * 1024 * 1024 // 500MB
+  const MAX_DURATION = 3 * 60 // 3 minutes
+
+  
+  const validateVideoDuration = (file: File): Promise<number> => {
+    return new Promise((resolve, reject) => {
+      const video = document.createElement('video')
+      video.preload = 'metadata'
+      
+      video.onloadedmetadata = () => {
+        window.URL.revokeObjectURL(video.src)
+        resolve(video.duration)
+      }
+      
+      video.onerror = () => {
+        window.URL.revokeObjectURL(video.src)
+        reject(new Error('Failed to load video metadata'))
+      }
+      
+      video.src = window.URL.createObjectURL(file)
+    })
+  }
+
+  const onDrop = useCallback(async (acceptedFiles: File[], rejectedFiles: any[]) => {
+    if (rejectedFiles.length > 0) {
+      setError('Please select a valid video file')
+      return
+    }
+
+    const file = acceptedFiles[0]
+    if (!file) return
+
+    if (file.size > MAX_SIZE) {
+      setError('Video must be under 500MB')
+      return
+    }
+
+    setError(null)
+    setUploading(true)
+    setStatus('Validating video duration...')
+
+    try {
+      // Check video duration
+      const duration = await validateVideoDuration(file)
+      
+      if (duration > MAX_DURATION) {
+        const minutes = Math.floor(duration / 60)
+        const seconds = Math.floor(duration % 60)
+        setError(`Video is ${minutes}:${seconds.toString().padStart(2, '0')} long. Please upload videos under 3 minutes.`)
+        setUploading(false)
+        setStatus('')
+        return
+      }
+
+      console.log(`Video duration: ${duration} seconds (${Math.floor(duration / 60)}:${Math.floor(duration % 60).toString().padStart(2, '0')})`)
+    } catch (durationError) {
+      console.warn('Could not validate video duration:', durationError)
+      // Continue with upload if duration check fails (server will validate as backup)
+    }
+    
+    const sizeMB = (file.size / (1024 * 1024)).toFixed(1)
+    if (file.size > 25 * 1024 * 1024) {
+      setStatus(`Large file (${sizeMB}MB) - will extract audio for processing...`)
+    } else {
+      setStatus(`Processing ${sizeMB}MB video directly...`)
+    }
+
+    try {
+      const formData = new FormData()
+      formData.append('video', file)
+
+      const response = await fetch(`${API_BASE_URL}/upload`, {
+        method: 'POST',
+        body: formData
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Upload failed')
+      }
+
+      const video = await response.json()
+      onVideoUploaded(video)
+      setStatus('Upload completed successfully!')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Upload failed')
+    } finally {
+      setUploading(false)
+      setTimeout(() => setStatus(''), 3000)
+    }
+  }, [onVideoUploaded])
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    accept: {
+      'video/*': ['.mp4', '.mov', '.avi', '.mkv', '.webm']
+    },
+    maxSize: MAX_SIZE,
+    multiple: false
+  })
+
+  return (
+    <div className="w-full max-w-md mx-auto">
+      <div
+        {...getRootProps()}
+        className={`
+          border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all duration-200
+          ${isDragActive ? 'border-blue-500 bg-blue-50 scale-105' : 'border-gray-300 hover:border-blue-400 hover:bg-gray-50'}
+          ${uploading ? 'pointer-events-none opacity-50' : ''}
+        `}
+      >
+        <input {...getInputProps()} />
+        
+        {uploading ? (
+          <div className="space-y-3">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+            <p className="text-sm font-medium text-gray-700">Uploading your video...</p>
+            <p className="text-xs text-gray-500">This may take a moment</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <div className="mx-auto w-16 h-16 rounded-full bg-gradient-to-br from-blue-100 to-purple-100 flex items-center justify-center">
+              <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+              </svg>
+            </div>
+            <div>
+              <p className="text-lg font-semibold text-gray-900">
+                {isDragActive ? 'Drop your video here' : 'Upload your video'}
+              </p>
+              <p className="text-sm text-gray-600 mt-1">
+                Drag & drop or click to browse
+              </p>
+            </div>
+            <div className="flex items-center justify-center gap-4 text-xs text-gray-500">
+              <span className="flex items-center gap-1">
+                <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                </svg>
+                MP4, MOV, AVI, MKV
+              </span>
+              <span className="text-gray-400">•</span>
+              <span className="flex items-center gap-1">
+                <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" clipRule="evenodd" />
+                </svg>
+                Under 3 minutes
+              </span>
+              <span className="text-gray-400">•</span>
+              <span className="flex items-center gap-1">
+                <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                </svg>
+                Up to 500MB
+              </span>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {status && (
+        <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-xl flex items-center gap-2">
+          <svg className="w-4 h-4 text-blue-600 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+          </svg>
+          <p className="text-sm text-blue-700 font-medium">{status}</p>
+        </div>
+      )}
+
+      {error && (
+        <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-xl flex items-center gap-2">
+          <svg className="w-4 h-4 text-red-600 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+          </svg>
+          <p className="text-sm text-red-700 font-medium">{error}</p>
+        </div>
+      )}
+    </div>
+  )
+}
