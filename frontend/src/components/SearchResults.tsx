@@ -1,6 +1,6 @@
 'use client'
 
-import { SearchResult } from '../lib/types'
+import { SearchResult } from '@/lib/types'
 
 interface SearchResultsProps {
   results: SearchResult[]

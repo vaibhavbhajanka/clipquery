@@ -9,6 +9,7 @@ const nextConfig: NextConfig = {
     ignoreBuildErrors: false,
   },
   typedRoutes: true,
+  outputFileTracingRoot: process.cwd(),
 };
 
 export default nextConfig;
