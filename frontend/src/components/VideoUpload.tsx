@@ -5,7 +5,7 @@ import { useDropzone } from 'react-dropzone'
 import { Video } from '@/lib/types'
 
 // API base URL - configurable for different environments
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+const API_BASE_URL = process.env.API_URL || 'http://localhost:8000'
 
 interface VideoUploadProps {
   onVideoUploaded: (video: Video) => void

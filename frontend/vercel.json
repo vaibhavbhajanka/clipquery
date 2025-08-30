@@ -2,14 +2,6 @@
   "buildCommand": "npm run build",
   "outputDirectory": ".next",
   "framework": "nextjs",
-  "env": {
-    "NEXT_PUBLIC_API_URL": "@clipquery_api_url"
-  },
-  "build": {
-    "env": {
-      "NEXT_PUBLIC_API_URL": "@clipquery_api_url"
-    }
-  },
   "headers": [
     {
       "source": "/(.*)",
