@@ -1,10 +1,4 @@
 {
-  "buildCommand": "cd frontend && npm run build",
-  "outputDirectory": "frontend/.next",
-  "rewrites": [
-    {
-      "source": "/api/:path*",
-      "destination": "@clipquery_api_url/:path*"
-    }
-  ]
+  "buildCommand": "npm run build",
+  "outputDirectory": "frontend/.next"
 }

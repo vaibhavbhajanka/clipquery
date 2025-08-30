@@ -1,9 +1,7 @@
 {
   "name": "clipquery",
   "version": "1.0.0",
-  "description": "Video search and chat application",
-  "private": true,
-  "engines": {
-    "node": ">=18.0.0"
+  "scripts": {
+    "build": "cd frontend && npm install && npm run build"
   }
 }
