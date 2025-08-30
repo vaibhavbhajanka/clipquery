@@ -10,8 +10,8 @@ import TabSwitcher from '@/components/TabSwitcher'
 import ChatPanel from '@/components/ChatPanel'
 import { Video, SearchResult, VideoSegment } from '@/lib/types'
 
-// API base URL - configurable for different environments
-const API_BASE_URL = process.env.API_URL || 'http://localhost:8000'
+// API base URL - using proxy routes to hide backend URL
+const API_BASE_URL = ''
 
 function formatTime(seconds: number): string {
   const minutes = Math.floor(seconds / 60)
@@ -36,7 +36,7 @@ export default function Home() {
 
   const fetchTranscript = async (videoId: string) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/videos/${videoId}/transcript`)
+      const response = await fetch(`/api/proxy/videos/${videoId}/transcript`)
       if (response.ok) {
         const transcriptData = await response.json()
         setTranscript(transcriptData)
@@ -54,7 +54,7 @@ export default function Home() {
 
   const resolveVideoUrl = async (video: Video) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/video-url/${video.filename}`)
+      const response = await fetch(`/api/video-url/${video.filename}`)
       const data = await response.json()
       
       if (response.ok && data.url) {
@@ -70,7 +70,7 @@ export default function Home() {
     } catch (error) {
       console.error('Error resolving video URL:', error)
       // Fallback to localhost URL
-      const fallbackUrl = `${API_BASE_URL}/video/${video.filename}`
+      const fallbackUrl = `/api/video/${video.filename}`
       setVideoData({
         url: fallbackUrl,
         type: 'local'
@@ -88,7 +88,7 @@ export default function Home() {
     await resolveVideoUrl(video)
 
     try {
-      const response = await fetch(`${API_BASE_URL}/process`, {
+      const response = await fetch(`/api/proxy/process`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -122,7 +122,7 @@ export default function Home() {
     setCurrentSearchQuery(query)
     setIsSearching(true)
     try {
-      const response = await fetch(`${API_BASE_URL}/search`, {
+      const response = await fetch(`/api/proxy/search`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 

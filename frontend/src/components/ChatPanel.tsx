@@ -74,22 +74,13 @@ export default function ChatPanel({ videoId, disabled, onSeek }: ChatPanelProps)
       return
     }
 
-    const connectWebSocket = () => {
+    const connectWebSocket = async () => {
       try {
-        // Better environment detection for WebSocket URL
-        const isProduction = process.env.NODE_ENV === 'production'
-        const wsProtocol = typeof window !== 'undefined' && window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+        // Fetch WebSocket configuration from server
+        const configResponse = await fetch('/api/ws-config')
+        const config = await configResponse.json()
         
-        let wsHost
-        if (process.env.WS_URL) {
-          wsHost = process.env.WS_URL
-        } else if (isProduction && typeof window !== 'undefined') {
-          wsHost = `${wsProtocol}//${window.location.host}`
-        } else {
-          wsHost = 'ws://localhost:8000'
-        }
-        
-        const wsUrl = `${wsHost}/ws/chat/${videoId}`
+        const wsUrl = `${config.wsUrl}/ws/chat/${videoId}`
         console.log('Attempting WebSocket connection to:', wsUrl)
         const ws = new WebSocket(wsUrl)
         

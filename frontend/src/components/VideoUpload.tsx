@@ -4,8 +4,8 @@ import { useCallback, useState } from 'react'
 import { useDropzone } from 'react-dropzone'
 import { Video } from '@/lib/types'
 
-// API base URL - configurable for different environments
-const API_BASE_URL = process.env.API_URL || 'http://localhost:8000'
+// API base URL - using proxy routes to hide backend URL
+const API_BASE_URL = ''
 
 interface VideoUploadProps {
   onVideoUploaded: (video: Video) => void
@@ -44,7 +44,7 @@ export default function VideoUpload({ onVideoUploaded }: VideoUploadProps) {
     setStatus('Fetching YouTube video information...')
 
     try {
-      const response = await fetch(`${API_BASE_URL}/upload-youtube`, {
+      const response = await fetch(`/api/proxy/upload-youtube`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url: youtubeUrl })
@@ -135,7 +135,7 @@ export default function VideoUpload({ onVideoUploaded }: VideoUploadProps) {
       const formData = new FormData()
       formData.append('video', file)
 
-      const response = await fetch(`${API_BASE_URL}/upload`, {
+      const response = await fetch(`/api/upload`, {
         method: 'POST',
         body: formData
       })
