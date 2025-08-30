@@ -132,20 +132,67 @@ export default function VideoUpload({ onVideoUploaded }: VideoUploadProps) {
     }
 
     try {
-      const formData = new FormData()
-      formData.append('video', file)
+      setStatus('Getting upload URL...')
 
-      const response = await fetch(`${API_BASE_URL}/upload`, {
+      // Step 1: Get presigned upload URL
+      const urlResponse = await fetch(`${API_BASE_URL}/get-upload-url`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          filename: file.name,
+          content_type: file.type || 'video/mp4'
+        })
+      })
+
+      if (!urlResponse.ok) {
+        const errorData = await urlResponse.json()
+        throw new Error(errorData.error || 'Failed to get upload URL')
+      }
+
+      const { upload_url, fields, filename } = await urlResponse.json()
+      
+      setStatus('Uploading to S3...')
+
+      // Step 2: Upload directly to S3 using presigned URL
+      const formData = new FormData()
+      
+      // Add all the fields from the presigned URL
+      Object.entries(fields).forEach(([key, value]) => {
+        formData.append(key, value as string)
+      })
+      
+      // Add the file last
+      formData.append('file', file)
+
+      const s3Response = await fetch(upload_url, {
         method: 'POST',
         body: formData
       })
 
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Upload failed')
+      if (!s3Response.ok) {
+        throw new Error('Failed to upload to S3')
       }
 
-      const video = await response.json()
+      setStatus('Completing upload...')
+
+      // Step 3: Complete the upload by creating database record
+      const completeResponse = await fetch(`${API_BASE_URL}/complete-upload`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          filename: filename,
+          original_name: file.name,
+          file_size: file.size,
+          duration: undefined // Will be calculated during processing
+        })
+      })
+
+      if (!completeResponse.ok) {
+        const errorData = await completeResponse.json()
+        throw new Error(errorData.error || 'Failed to complete upload')
+      }
+
+      const video = await completeResponse.json()
       onVideoUploaded(video)
       setStatus('Upload completed successfully!')
     } catch (err) {

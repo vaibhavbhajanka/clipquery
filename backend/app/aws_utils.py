@@ -18,9 +18,7 @@ class AWSManager:
     def __init__(self):
         self.s3_client = boto3.client(
             's3',
-            aws_access_key_id=os.getenv('AWS_ACCESS_KEY_ID'),
-            aws_secret_access_key=os.getenv('AWS_SECRET_ACCESS_KEY'),
-            region_name=os.getenv('AWS_REGION', 'us-east-1')
+            region_name=os.getenv('AWS_REGION', 'us-west-1')
         )
         self.bucket_name = os.getenv('AWS_S3_BUCKET')
         
@@ -115,10 +113,35 @@ class AWSManager:
         except (subprocess.CalledProcessError, json.JSONDecodeError, KeyError) as e:
             print(f"Error getting video duration: {e}")
             return None
+    
+    def generate_presigned_upload_url(self, filename: str, content_type: str = 'video/mp4', expires_in: int = 3600) -> Optional[dict]:
+        """Generate a presigned URL for uploading files directly to S3"""
+        try:
+            key = f"videos/{filename}"
+            
+            presigned_data = self.s3_client.generate_presigned_post(
+                Bucket=self.bucket_name,
+                Key=key,
+                Fields={
+                    'Content-Type': content_type
+                },
+                Conditions=[
+                    {'Content-Type': content_type},
+                    ['content-length-range', 1, 500 * 1024 * 1024]  # 1 byte to 500MB
+                    # Removed cache-control restrictions to be more permissive
+                ],
+                ExpiresIn=expires_in
+            )
+            
+            return {
+                'url': presigned_data['url'],
+                'fields': presigned_data['fields'],
+                'filename': filename,
+                'key': key
+            }
+        except ClientError as e:
+            print(f"Error generating presigned URL: {e}")
+            return None
 
-# Global AWS manager instance - only initialized if all required credentials are available
-aws_manager = AWSManager() if all([
-    os.getenv('AWS_ACCESS_KEY_ID'),
-    os.getenv('AWS_SECRET_ACCESS_KEY'),
-    os.getenv('AWS_S3_BUCKET')
-]) else None
+# Global AWS manager instance - only initialized if S3 bucket is configured
+aws_manager = AWSManager() if os.getenv('AWS_S3_BUCKET') else None

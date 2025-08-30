@@ -80,27 +80,9 @@ export default function TranscriptViewer({
           const visibleHeight = Math.max(0, visibleBottom - visibleTop)
           const visibilityRatio = rect.height > 0 ? visibleHeight / rect.height : 0
           
-          // If transcript is less than 50% visible, bring it into view first
-          if (visibilityRatio < 0.5) {
-            transcriptSection.scrollIntoView({ 
-              behavior: 'smooth', 
-              block: 'center',
-              inline: 'nearest'
-            })
-            
-            // Then scroll within the container after page scroll
-            setTimeout(() => {
-              const elementOffsetTop = currentSegmentElement.offsetTop - containerRef.current!.offsetTop
-              const containerHeight = container.clientHeight
-              const targetScrollTop = elementOffsetTop - (containerHeight / 2)
-              
-              container.scrollTo({
-                top: Math.max(0, targetScrollTop),
-                behavior: 'smooth'
-              })
-            }, 600)
-          } else {
-            // Transcript is visible enough, just scroll within container
+          // Only auto-scroll if transcript section is at least 30% visible
+          // This prevents scrolling when user is focused on the video player
+          if (visibilityRatio >= 0.3) {
             const elementOffsetTop = currentSegmentElement.offsetTop - containerRef.current!.offsetTop
             const containerHeight = container.clientHeight
             const targetScrollTop = elementOffsetTop - (containerHeight / 2)
