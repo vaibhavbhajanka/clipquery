@@ -4,8 +4,7 @@ import { useCallback, useState } from 'react'
 import { useDropzone } from 'react-dropzone'
 import { Video } from '@/lib/types'
 
-// API base URL - using proxy routes to hide backend URL
-const API_BASE_URL = ''
+// Using Next.js API routes (no direct backend calls)
 
 interface VideoUploadProps {
   onVideoUploaded: (video: Video) => void
@@ -44,7 +43,7 @@ export default function VideoUpload({ onVideoUploaded }: VideoUploadProps) {
     setStatus('Fetching YouTube video information...')
 
     try {
-      const response = await fetch(`/api/proxy/upload-youtube`, {
+      const response = await fetch(`/api/upload-youtube`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url: youtubeUrl })

@@ -10,8 +10,7 @@ import TabSwitcher from '@/components/TabSwitcher'
 import ChatPanel from '@/components/ChatPanel'
 import { Video, SearchResult, VideoSegment } from '@/lib/types'
 
-// API base URL - using proxy routes to hide backend URL
-const API_BASE_URL = ''
+// Using Next.js API routes (no direct backend calls)
 
 function formatTime(seconds: number): string {
   const minutes = Math.floor(seconds / 60)
@@ -36,7 +35,7 @@ export default function Home() {
 
   const fetchTranscript = async (videoId: string) => {
     try {
-      const response = await fetch(`/api/proxy/videos/${videoId}/transcript`)
+      const response = await fetch(`/api/videos/${videoId}/transcript`)
       if (response.ok) {
         const transcriptData = await response.json()
         setTranscript(transcriptData)
@@ -88,7 +87,7 @@ export default function Home() {
     await resolveVideoUrl(video)
 
     try {
-      const response = await fetch(`/api/proxy/process`, {
+      const response = await fetch(`/api/process`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -122,7 +121,7 @@ export default function Home() {
     setCurrentSearchQuery(query)
     setIsSearching(true)
     try {
-      const response = await fetch(`/api/proxy/search`, {
+      const response = await fetch(`/api/search`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
