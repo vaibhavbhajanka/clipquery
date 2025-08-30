@@ -106,7 +106,7 @@ Natural language video search powered by AI. Upload videos and search through th
 4. **Open your browser:**
    Visit [http://localhost:3000](http://localhost:3000)
 
-## 📋 API Documentation
+## API Documentation
 
 ### Core Endpoints
 

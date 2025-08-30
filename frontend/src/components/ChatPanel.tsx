@@ -309,7 +309,7 @@ export default function ChatPanel({ videoId, disabled, onSeek }: ChatPanelProps)
   const canSendMessage = videoId && !disabled && isConnected && inputMessage.trim() && !isTyping  // Only send when everything is ready
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full min-h-0">
       {/* Connection Status - Improved Design */}
       {!isConnected && videoId && !disabled && (
         <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-xl">
@@ -344,7 +344,7 @@ export default function ChatPanel({ videoId, disabled, onSeek }: ChatPanelProps)
       )}
 
       {/* Chat Messages - Enhanced Design */}
-      <div className="flex-1 overflow-y-auto mb-6 space-y-4 px-1">
+      <div className="flex-1 overflow-y-auto mb-6 space-y-4 px-1 min-h-0">
         {messages.length === 0 ? (
           <div className="text-center py-16">
             <div className="w-16 h-16 mx-auto mb-6 bg-gradient-to-br from-blue-100 to-purple-100 rounded-2xl flex items-center justify-center">
@@ -418,7 +418,7 @@ export default function ChatPanel({ videoId, disabled, onSeek }: ChatPanelProps)
                       : "Ask about this video..."
               }
               disabled={!canTypeMessage}
-              className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-50 disabled:text-gray-400 text-sm sm:text-base placeholder-gray-500 shadow-sm"
+              className="w-full px-3 sm:px-4 py-2 sm:py-3 text-sm sm:text-base text-gray-900 placeholder-gray-400 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-500"
             />
           </div>
           <button

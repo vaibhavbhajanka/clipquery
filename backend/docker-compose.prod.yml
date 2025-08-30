@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      # Database
+      - user=${user}
+      - password=${password}
+      - host=${host}
+      - port=${port}
+      - dbname=${dbname}
+      
+      # OpenAI
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      
+      # Pinecone (optional)
+      - PINECONE_API_KEY=${PINECONE_API_KEY}
+      - PINECONE_INDEX_NAME=${PINECONE_INDEX_NAME}
+      
+      # AWS S3 (optional)
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_REGION=${AWS_REGION}
+      - AWS_S3_BUCKET=${AWS_S3_BUCKET}
+    volumes:
+      - ./uploads:/app/uploads
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
