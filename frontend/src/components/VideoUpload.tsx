@@ -4,7 +4,8 @@ import { useCallback, useState } from 'react'
 import { useDropzone } from 'react-dropzone'
 import { Video } from '@/lib/types'
 
-// Using Next.js API routes (no direct backend calls)
+// Direct AWS backend calls for large file uploads
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
 interface VideoUploadProps {
   onVideoUploaded: (video: Video) => void
@@ -134,7 +135,7 @@ export default function VideoUpload({ onVideoUploaded }: VideoUploadProps) {
       const formData = new FormData()
       formData.append('video', file)
 
-      const response = await fetch(`/api/upload`, {
+      const response = await fetch(`${API_BASE_URL}/upload`, {
         method: 'POST',
         body: formData
       })
