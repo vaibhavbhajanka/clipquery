@@ -133,7 +133,10 @@ develop-eggs/
 downloads/
 eggs/
 .eggs/
-lib/
+# Python lib directories only, not frontend lib
+**/python/lib/
+backend/lib/
+.venv/lib/
 lib64/
 parts/
 sdist/
