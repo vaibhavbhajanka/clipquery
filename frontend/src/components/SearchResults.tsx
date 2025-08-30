@@ -36,7 +36,7 @@ export default function SearchResults({ results, onSeek, activeResultIndex = -1 
         return (
           <div
             key={i}
-            className={`group p-4 rounded-xl cursor-pointer transition-all duration-200 shadow-sm hover:shadow-md ${
+            className={`group p-3 sm:p-4 rounded-xl cursor-pointer transition-all duration-200 shadow-sm hover:shadow-md ${
               isActive 
                 ? 'bg-gradient-to-r from-blue-100 to-blue-200 border-2 border-blue-400' 
                 : isPrimary 
@@ -45,9 +45,9 @@ export default function SearchResults({ results, onSeek, activeResultIndex = -1 
             }`}
             onClick={() => onSeek(result.startTime, i)}
           >
-            <div className="flex justify-between items-start gap-4">
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-1">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3 sm:gap-4">
+              <div className="flex-1 min-w-0">
+                <div className="flex flex-wrap items-center gap-2 mb-2">
                   {isPrimary && (
                     <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
                       isActive 
@@ -63,30 +63,30 @@ export default function SearchResults({ results, onSeek, activeResultIndex = -1 
                     </span>
                   )}
                 </div>
-                <p className="text-gray-800 leading-relaxed font-medium">
+                <p className="text-sm sm:text-base text-gray-800 leading-relaxed font-medium">
                   {result.text}
                 </p>
-                <div className="mt-2 flex items-center gap-4 text-sm">
+                <div className="mt-2 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-xs sm:text-sm">
                   <span className="flex items-center gap-1 text-gray-600">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                     {formatTime(result.startTime)} - {formatTime(result.endTime)}
                   </span>
-                  <span className="text-gray-500">•</span>
+                  <span className="hidden sm:inline text-gray-500">•</span>
                   <span className="text-gray-600">
                     {Math.round(result.confidence * 100)}% confidence
                   </span>
                 </div>
               </div>
               
-              <div className="flex-shrink-0">
+              <div className="flex-shrink-0 self-start sm:self-center">
                 <button className={`p-2 rounded-lg transition-colors group-hover:scale-110 transform duration-200 ${
                   isActive 
                     ? 'bg-blue-700 text-white' 
                     : 'bg-blue-600 text-white hover:bg-blue-700'
                 }`}>
-                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                  <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
                   </svg>
                 </button>

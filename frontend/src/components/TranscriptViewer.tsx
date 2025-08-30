@@ -134,14 +134,14 @@ export default function TranscriptViewer({
           <div
             key={segment.id || i}
             ref={el => { segmentRefs.current[segment.id] = el!; }}
-            className={`group flex gap-4 p-3 rounded-lg cursor-pointer transition-all duration-200 ${
+            className={`group flex flex-col sm:flex-row gap-2 sm:gap-4 p-2 sm:p-3 rounded-lg cursor-pointer transition-all duration-200 ${
               isActive 
                 ? 'bg-blue-100 border-l-4 border-blue-500 shadow-sm' 
                 : 'hover:bg-gray-50'
             }`}
             onClick={() => onSeek(segment.startTime)}
           >
-            <div className="flex-shrink-0 w-16 text-right">
+            <div className="flex-shrink-0 w-full sm:w-16 text-left sm:text-right">
               <button className={`text-xs font-mono transition-all ${
                 isActive 
                   ? 'text-blue-700 font-bold' 
@@ -159,10 +159,10 @@ export default function TranscriptViewer({
               </p>
             </div>
             
-            <div className={`flex-shrink-0 transition-opacity ${
+            <div className={`flex-shrink-0 transition-opacity self-end sm:self-center ${
               isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
             }`}>
-              <svg className={`w-4 h-4 ${
+              <svg className={`w-3 h-3 sm:w-4 sm:h-4 ${
                 isActive ? 'text-blue-600' : 'text-gray-400'
               }`} fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />

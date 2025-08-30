@@ -77,3 +77,13 @@ class ProcessingResult(BaseModel):
     segment_count: Optional[int] = None
     window_count: Optional[int] = None
     error: Optional[str] = None
+
+class ChatMessage(BaseModel):
+    message: str
+    video_id: str
+    timestamp: Optional[datetime] = None
+    
+class ChatResponse(BaseModel):
+    response: str
+    video_context_used: bool = False
+    timestamp_references: Optional[List[dict]] = None
