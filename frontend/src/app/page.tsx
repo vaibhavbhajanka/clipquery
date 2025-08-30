@@ -50,12 +50,19 @@ export default function Home() {
     }
   }
 
+  const [videoData, setVideoData] = useState<{url: string, type: string, youtubeId?: string} | null>(null)
+
   const resolveVideoUrl = async (video: Video) => {
     try {
       const response = await fetch(`${API_BASE_URL}/video-url/${video.filename}`)
       const data = await response.json()
       
       if (response.ok && data.url) {
+        setVideoData({
+          url: data.url,
+          type: data.type || 'local',
+          youtubeId: data.youtube_id
+        })
         setVideoUrl(data.url)
       } else {
         throw new Error('Failed to get video URL')
@@ -64,6 +71,10 @@ export default function Home() {
       console.error('Error resolving video URL:', error)
       // Fallback to localhost URL
       const fallbackUrl = `${API_BASE_URL}/video/${video.filename}`
+      setVideoData({
+        url: fallbackUrl,
+        type: 'local'
+      })
       setVideoUrl(fallbackUrl)
     }
   }
@@ -153,22 +164,22 @@ export default function Home() {
   const canSearch = currentVideo && currentVideo.status === 'ready' && !isProcessing
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-6">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-4 sm:py-6">
+      <div className="max-w-4xl md:max-w-6xl lg:max-w-7xl xl:max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
-        <div className="text-center mb-6">
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-2">
+        <div className="text-center mb-4 sm:mb-6">
+          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-2">
             ClipQuery
           </h1>
-          <p className="text-lg text-gray-700">
+          <p className="text-base sm:text-lg text-gray-700 max-w-2xl mx-auto">
             Natural language video search powered by AI
           </p>
         </div>
 
         {!currentVideo ? (
           // Centered upload layout when no video is present
-          <div className="flex items-center justify-center min-h-[60vh]">
-            <div className="w-full max-w-6xl">
+          <div className="flex items-center justify-center min-h-[50vh] sm:min-h-[60vh]">
+            <div className="w-full max-w-3xl lg:max-w-4xl xl:max-w-5xl">
               <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6 sm:p-8 lg:p-12">
                 <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 mb-6 text-center">Upload Video</h2>
                 <VideoUpload onVideoUploaded={handleVideoUploaded} />
@@ -177,12 +188,12 @@ export default function Home() {
           </div>
         ) : (
           // Regular layout when video is present
-          <div className="grid grid-cols-1 lg:grid-cols-4 xl:grid-cols-5 gap-4 sm:gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-12 gap-4 sm:gap-6">
             {/* Left Column - Upload & Search */}
-            <div className="lg:col-span-1 xl:col-span-2 space-y-4">
-              <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-xl font-bold text-gray-900">Video Details</h2>
+            <div className="md:col-span-1 lg:col-span-4 xl:col-span-4 space-y-4">
+              <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-4 sm:p-6">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-3">
+                  <h2 className="text-lg sm:text-xl font-bold text-gray-900">Video Details</h2>
                   <button
                     onClick={() => {
                       setCurrentVideo(null)
@@ -220,7 +231,7 @@ export default function Home() {
                       currentVideo.status === 'failed' ? 'bg-red-100 text-red-800' :
                       'bg-gray-100 text-gray-800'
                     }`}>
-                      {isProcessing ? '⏳ Processing...' : currentVideo.status === 'ready' ? '✓ Ready' : currentVideo.status}
+                      {isProcessing ? 'Processing...' : currentVideo.status === 'ready' ? 'Ready' : currentVideo.status}
                     </span>
                   </div>
                   
@@ -232,8 +243,8 @@ export default function Home() {
                 </div>
               </div>
 
-              <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6">
-                <h2 className="text-xl font-bold text-gray-900 mb-4">
+              <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-4 sm:p-6">
+                <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-4">
                   {activeTab === 'search' ? 'Search Video' : 'Chat with Video'}
                 </h2>
                 
@@ -257,7 +268,7 @@ export default function Home() {
                   )}
                 </div>
                 
-                <div className={`min-h-96 max-h-screen ${activeTab === 'chat' ? 'block' : 'hidden'}`}>
+                <div className={`min-h-[400px] max-h-[500px] sm:min-h-[450px] sm:max-h-[550px] flex flex-col ${activeTab === 'chat' ? 'block' : 'hidden'}`}>
                   <ChatPanel 
                     videoId={currentVideo.id}
                     disabled={!canSearch}
@@ -267,11 +278,11 @@ export default function Home() {
               </div>
 
               {activeTab === 'search' && searchResults.length > 0 && (
-                <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6">
+                <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-4 sm:p-6">
                   <h3 className="text-lg font-bold text-gray-900 mb-4">
                     Search Results
                     {activeResultIndex >= 0 && (
-                      <span className="text-sm font-normal text-blue-600 ml-2">
+                      <span className="block sm:inline text-sm font-normal text-blue-600 sm:ml-2">
                         (jumped to best match)
                       </span>
                     )}
@@ -286,32 +297,36 @@ export default function Home() {
             </div>
 
             {/* Middle and Right Columns - Video Player and Transcript */}
-            <div className="lg:col-span-3 xl:col-span-3 space-y-4">
-              <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6">
-                <h2 className="text-xl font-bold text-gray-900 mb-4">Video Player</h2>
-                {videoUrl ? (
-                  <VideoPlayer 
-                    url={videoUrl}
-                    seekTo={seekTo}
-                    onProgress={setCurrentVideoTime}
-                  />
-                ) : (
-                  <div className="flex items-center justify-center w-full h-[450px] bg-gray-100 rounded-xl">
-                    <div className="text-center">
-                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                      <div className="text-gray-600 font-medium">Loading video...</div>
+            <div className="md:col-span-2 lg:col-span-8 xl:col-span-8 space-y-4">
+              <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-4 sm:p-6">
+                <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-4">Video Player</h2>
+                <div className="aspect-video bg-gray-100 rounded-xl overflow-hidden">
+                  {videoData ? (
+                    <VideoPlayer 
+                      url={videoData.url}
+                      seekTo={seekTo}
+                      onProgress={setCurrentVideoTime}
+                      videoType={videoData.type}
+                      youtubeId={videoData.youtubeId}
+                    />
+                  ) : (
+                    <div className="flex items-center justify-center w-full h-full">
+                      <div className="text-center">
+                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                        <div className="text-gray-600 font-medium">Loading video...</div>
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
               
               {transcript.length > 0 && (
-                <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6">
-                  <div className="flex items-center justify-between mb-4">
+                <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-4 sm:p-6">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 gap-3">
                     <h3 className="text-lg font-bold text-gray-900">
                       Full Transcript
                       {currentSearchQuery && (
-                        <span className="text-sm font-normal text-gray-600 ml-2">
+                        <span className="block sm:inline text-sm font-normal text-gray-600 sm:ml-2">
                           (highlighting: "{currentSearchQuery}")
                         </span>
                       )}
@@ -329,11 +344,13 @@ export default function Home() {
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                         </svg>
-                        Auto-scroll {autoScrollEnabled ? 'ON' : 'OFF'}
+                        <span className="hidden sm:inline">Auto-scroll</span>
+                        <span className="sm:hidden">Auto</span>
+                        {autoScrollEnabled ? ' ON' : ' OFF'}
                       </button>
                       
                       {autoScrollEnabled && (
-                        <div className="flex items-center gap-2 text-xs text-gray-500">
+                        <div className="hidden lg:flex items-center gap-2 text-xs text-gray-500">
                           <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                             <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                           </svg>
@@ -343,7 +360,7 @@ export default function Home() {
                     </div>
                   </div>
                   
-                  <div className="max-h-96 overflow-y-auto">
+                  <div className="max-h-80 sm:max-h-96 lg:max-h-[500px] overflow-y-auto">
                     <TranscriptViewer 
                       segments={transcript}
                       searchQuery={currentSearchQuery}

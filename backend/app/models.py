@@ -17,6 +17,8 @@ class Video(Base):
     file_size = Column(BigInteger, nullable=False)
     duration = Column(Float, nullable=True)
     status = Column(String, nullable=False, default="uploaded")  # uploaded, processing, ready, failed
+    video_type = Column(String, nullable=False, default="uploaded")  # uploaded, youtube
+    youtube_id = Column(String, nullable=True)  # YouTube video ID for embedded videos
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     

@@ -29,6 +29,8 @@ class VideoBase(BaseModel):
     file_size: int
     duration: Optional[float] = None
     status: str = "uploaded"
+    video_type: str = "uploaded"
+    youtube_id: Optional[str] = None
     
     class Config:
         alias_generator = lambda string: ''.join(
@@ -54,6 +56,9 @@ class Video(VideoBase):
 
 class ProcessRequest(BaseModel):
     video_id: str
+
+class YouTubeUploadRequest(BaseModel):
+    url: str
 
 class SearchRequest(BaseModel):
     query: str
