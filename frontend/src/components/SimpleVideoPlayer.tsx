@@ -39,8 +39,8 @@ export default function SimpleVideoPlayer({ url, seekTo, onProgress }: SimpleVid
         src={url}
         controls
         width="100%"
-        height="450"
-        className="rounded-xl shadow-lg bg-black"
+        height="auto"
+        className="w-full h-auto max-h-[60vh] sm:max-h-[450px] rounded-xl shadow-lg bg-black"
         onTimeUpdate={handleTimeUpdate}
         onError={(e) => {
           console.error('Video error:', e)
