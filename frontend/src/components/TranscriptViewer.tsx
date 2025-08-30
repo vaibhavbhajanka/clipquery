@@ -18,7 +18,7 @@ function formatTime(seconds: number): string {
   return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`
 }
 
-function highlightText(text: string, query?: string): JSX.Element {
+function highlightText(text: string, query?: string): React.JSX.Element {
   if (!query || query.trim() === '') {
     return <span>{text}</span>
   }
