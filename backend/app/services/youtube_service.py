@@ -165,8 +165,24 @@ def fetch_youtube_transcript_smart(video_id: str) -> list:
     """Fetch YouTube transcript and apply smart segmentation to mimic Whisper's natural boundaries"""
     try:
         from youtube_transcript_api import YouTubeTranscriptApi
+        import requests
         
         print(f"Fetching YouTube transcript for smart segmentation: {video_id}")
+        
+        # Configure proxy if available
+        proxy_url = os.getenv('PROXY_URL')
+        if proxy_url:
+            print(f"Using proxy for YouTube transcript: {proxy_url.split('@')[1] if '@' in proxy_url else proxy_url}")
+            # Monkey-patch requests session to use proxy
+            original_request = requests.Session.request
+            def patched_request(self, method, url, **kwargs):
+                if 'youtube.com' in url or 'googlevideo.com' in url:
+                    kwargs['proxies'] = {
+                        'http': proxy_url,
+                        'https': proxy_url
+                    }
+                return original_request(self, method, url, **kwargs)
+            requests.Session.request = patched_request
         
         # Get transcript using the correct API method  
         api = YouTubeTranscriptApi()

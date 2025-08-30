@@ -9,6 +9,7 @@ from datetime import datetime
 from app.database import get_db
 from app.models import Video as VideoModel
 from app.schemas import Video, ProcessRequest, ProcessingResult
+from pydantic import BaseModel
 from app.aws_utils import aws_manager
 from app.services.video_service import process_video
 
@@ -17,6 +18,68 @@ router = APIRouter()
 # Ensure uploads directory exists
 UPLOAD_DIR = "uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+# Pydantic models for presigned uploads
+class PresignedUploadRequest(BaseModel):
+    filename: str
+    content_type: str = "video/mp4"
+
+class CompleteUploadRequest(BaseModel):
+    filename: str
+    original_name: str
+    file_size: int
+    duration: float = None
+
+@router.post("/get-upload-url")
+async def get_presigned_upload_url(request: PresignedUploadRequest):
+    """Generate a presigned URL for direct S3 upload"""
+    if not aws_manager:
+        raise HTTPException(status_code=503, detail="S3 upload not configured")
+    
+    # Generate unique filename with timestamp
+    timestamp = int(datetime.now().timestamp())
+    unique_filename = f"{timestamp}-{request.filename}"
+    
+    presigned_data = aws_manager.generate_presigned_upload_url(
+        unique_filename, 
+        request.content_type
+    )
+    
+    if not presigned_data:
+        raise HTTPException(status_code=500, detail="Failed to generate upload URL")
+    
+    return {
+        "upload_url": presigned_data["url"],
+        "fields": presigned_data["fields"],
+        "filename": unique_filename
+    }
+
+@router.post("/complete-upload", response_model=Video)
+async def complete_upload(request: CompleteUploadRequest, db: Session = Depends(get_db)):
+    """Complete the upload process by creating database record"""
+    try:
+        # Create video record in database
+        file_path = f"s3://{aws_manager.bucket_name}/videos/{request.filename}" if aws_manager else f"uploads/{request.filename}"
+        
+        db_video = VideoModel(
+            filename=request.filename,
+            original_name=request.original_name,
+            file_path=file_path,
+            file_size=request.file_size,
+            duration=request.duration,
+            status="uploaded"
+        )
+        
+        db.add(db_video)
+        db.commit()
+        db.refresh(db_video)
+        
+        print(f"Video record created with ID: {db_video.id}")
+        return db_video
+        
+    except Exception as error:
+        print(f"Complete upload error: {error}")
+        raise HTTPException(status_code=500, detail=f"Failed to complete upload: {str(error)}")
 
 @router.post("/upload", response_model=Video)
 async def upload_video(
