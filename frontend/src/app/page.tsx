@@ -11,7 +11,7 @@ import ChatPanel from '@/components/ChatPanel'
 import { Video, SearchResult, VideoSegment } from '@/lib/types'
 
 // API base URL - configurable for different environments
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+const API_BASE_URL = process.env.API_URL || 'http://localhost:8000'
 
 function formatTime(seconds: number): string {
   const minutes = Math.floor(seconds / 60)

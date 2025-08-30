@@ -81,8 +81,8 @@ export default function ChatPanel({ videoId, disabled, onSeek }: ChatPanelProps)
         const wsProtocol = typeof window !== 'undefined' && window.location.protocol === 'https:' ? 'wss:' : 'ws:'
         
         let wsHost
-        if (process.env.NEXT_PUBLIC_WS_URL) {
-          wsHost = process.env.NEXT_PUBLIC_WS_URL
+        if (process.env.WS_URL) {
+          wsHost = process.env.WS_URL
         } else if (isProduction && typeof window !== 'undefined') {
           wsHost = `${wsProtocol}//${window.location.host}`
         } else {
