@@ -4,10 +4,11 @@ const API_URL = process.env.API_URL || 'http://localhost:8000'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { filename: string } }
+  { params }: { params: Promise<{ filename: string }> }
 ) {
+  const resolvedParams = await params
   try {
-    const response = await fetch(`${API_URL}/video/${params.filename}`, {
+    const response = await fetch(`${API_URL}/video/${resolvedParams.filename}`, {
       headers: request.headers,
     })
 
