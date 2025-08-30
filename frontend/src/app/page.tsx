@@ -1,14 +1,14 @@
 'use client'
 
 import { useState } from 'react'
-import VideoUpload from '@/components/VideoUpload'
-import VideoPlayer from '@/components/SimpleVideoPlayer'
-import SearchBar from '@/components/SearchBar'
-import SearchResults from '@/components/SearchResults'
-import TranscriptViewer from '@/components/TranscriptViewer'
-import TabSwitcher from '@/components/TabSwitcher'
-import ChatPanel from '@/components/ChatPanel'
-import { Video, SearchResult, VideoSegment } from '@/lib/types'
+import VideoUpload from '../components/VideoUpload'
+import VideoPlayer from '../components/SimpleVideoPlayer'
+import SearchBar from '../components/SearchBar'
+import SearchResults from '../components/SearchResults'
+import TranscriptViewer from '../components/TranscriptViewer'
+import TabSwitcher from '../components/TabSwitcher'
+import ChatPanel from '../components/ChatPanel'
+import { Video, SearchResult, VideoSegment } from '../lib/types'
 
 // API base URL - configurable for different environments
 const API_BASE_URL = process.env.API_URL || 'http://localhost:8000'

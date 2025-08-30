@@ -1,6 +1,7 @@
 'use client'
 
-import { VideoSegment } from '@/lib/types'
+import React from 'react'
+import { VideoSegment } from '../lib/types'
 import { useRef, useEffect } from 'react'
 
 interface TranscriptViewerProps {
