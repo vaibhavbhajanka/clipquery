@@ -1,201 +1,196 @@
 # ClipQuery
 
-Natural language video search powered by AI. Upload videos and search through them using natural language queries with precise timestamp results.
+ClipQuery is a comprehensive video content discovery platform that transforms how users search and navigate through video content using natural language queries. Built as a full-stack application with modern web technologies, it addresses the fundamental challenge of making video content searchable and accessible at scale.
 
-## Features
 
-- **Smart Video Upload**: Support for MP4, MOV, AVI, MKV, WebM files up to 500MB
-- **AI-Powered Transcription**: Automatic speech-to-text using OpenAI Whisper
-- **Semantic Search**: Natural language search through video content using embeddings
-- **Precise Timestamps**: Jump to exact moments in videos based on search results
-- **Cloud Storage**: Optional AWS S3 integration for scalable video storage
-- **Real-time Processing**: Live transcript viewing and search capabilities
+## 🖼️ Platform Demo
 
-##  Architecture
+### Uploaded Video Features
 
-### Backend (FastAPI + Python)
-- **FastAPI** web framework with async support
-- **SQLAlchemy** ORM with PostgreSQL (Supabase)
-- **OpenAI Whisper** for speech-to-text transcription
-- **Pinecone** vector database for semantic search
-- **AWS S3** for cloud video storage
-- **FFmpeg** for video processing
+<div align="center">
 
-### Frontend (Next.js + TypeScript)
-- **Next.js 15** with App Router
-- **React 19** with TypeScript
-- **Tailwind CSS** for styling
-- **React Dropzone** for file uploads
-- **React Player** for video playback
+| **1. Video Upload Area** | **2. Video Player Interface** |
+|:---:|:---:|
+| ![Upload Area](images/1-upload-area.png) | ![Video Player](images/2-video-player.png) |
+| *Drag & drop interface supporting MP4, MOV, AVI, MKV, and WebM formats up to 500MB* | *Interactive video player with timestamp controls and search result navigation* |
 
-##  Quick Start
+| **3. Transcript View** | **4. Search Results & Navigation** |
+|:---:|:---:|
+| ![Transcript](images/3-transcript.png) | ![Search Results](images/4-search-results.png) |
+| *Full transcript display with segment timestamps and text content* | *Natural language search results with confidence scores and precise timestamps* |
 
-### Prerequisites
-- Python 3.11+
-- Node.js 18+
-- FFmpeg installed
-- PostgreSQL database (Supabase recommended)
-- OpenAI API key
+| **5. Chat with Uploaded Video** |
+|:---:|
+| ![Chat Interface](images/5-chat-uploaded.png) |
+| *Real-time WebSocket-powered chat interface for interactive video conversations* |
 
-### Backend Setup
+</div>
 
-1. **Clone and navigate to backend:**
-   ```bash
-   cd backend
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\\Scripts\\activate
-   pip install -r requirements.txt
-   ```
+### YouTube Integration Features
 
-2. **Configure environment:**
-   ```bash
-   cp .env.example .env
-   # Edit .env with your actual credentials
-   ```
+<div align="center">
 
-3. **Required environment variables:**
-   ```env
-   # Database (Supabase PostgreSQL)
-   user=your_supabase_user
-   password=your_supabase_password
-   host=your_supabase_host
-   port=6543
-   dbname=postgres
+| **6. YouTube URL Upload** | **7. YouTube Transcript Display** |
+|:---:|:---:|
+| ![YouTube Upload](images/6-youtube-upload.png) | ![YouTube Transcript](images/7-youtube-transcript.png) |
+| *YouTube video processing with automatic transcript extraction* | *YouTube video transcript with timestamp synchronization* |
 
-   # OpenAI API
-   OPENAI_API_KEY=your_openai_api_key
-   ```
+| **8. YouTube Video Search** | **9. Chat with YouTube Video** |
+|:---:|:---:|
+| ![YouTube Search](images/8-youtube-chat.png) | ![YouTube Chat](images/9-youtube-search.png) |
+| *Semantic search across YouTube video content with result highlighting* | *Interactive chat interface for YouTube videos with context-aware responses* |
 
-4. **Optional services (for enhanced features):**
-   ```env
-   # Pinecone (for semantic search)
-   PINECONE_API_KEY=your_pinecone_api_key
-   PINECONE_INDEX_NAME=clipquery-segments
+</div>
 
-   # AWS S3 (for cloud storage)
-   AWS_ACCESS_KEY_ID=your_aws_access_key
-   AWS_SECRET_ACCESS_KEY=your_aws_secret_key
-   AWS_REGION=us-west-1
-   AWS_S3_BUCKET=your_s3_bucket_name
-   ```
+## Technical Architecture
 
-5. **Start the backend:**
-   ```bash
-   uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-   ```
+### System Overview
 
-### Frontend Setup
+ClipQuery employs a microservices-inspired architecture with clear separation between frontend presentation, backend business logic, and external service integrations. The system is designed for horizontal scalability and can handle both local deployments and cloud-scale operations.
 
-1. **Navigate to frontend:**
-   ```bash
-   cd frontend
-   npm install
-   ```
+**Frontend**: Next.js 15 with React 19, TypeScript, and Tailwind CSS
+**Backend**: FastAPI with Python 3.11, PostgreSQL, and vector embeddings
+**Infrastructure**: AWS ECS, CloudFront, S3, and Container Registry
+**AI Services**: OpenAI Whisper for transcription, OpenAI embeddings for semantic search
 
-2. **Configure environment:**
-   ```bash
-   cp .env.example .env.local
-   # Edit .env.local if needed (defaults to localhost:8000)
-   ```
+### Key Components
 
-3. **Start the frontend:**
-   ```bash
-   npm run dev
-   ```
+#### Video Processing Pipeline
+The video processing pipeline handles both uploaded files and YouTube URLs through a multi-stage approach:
 
-4. **Open your browser:**
-   Visit [http://localhost:3000](http://localhost:3000)
+1. **Video Ingestion**: Supports major formats (MP4, MOV, AVI, MKV, WebM) up to 500MB
+2. **Audio Extraction**: Uses FFmpeg for high-quality audio extraction
+3. **Transcription**: OpenAI Whisper provides industry-leading speech-to-text accuracy
+4. **Segmentation**: Intelligent chunking preserves semantic meaning while optimizing for search
+5. **Embedding Generation**: OpenAI's text-embedding-3-small model creates vector representations
 
-## API Documentation
+#### Semantic Search Engine
+The search implementation provides both semantic and lexical search capabilities:
 
-### Core Endpoints
+- **Vector Search**: Uses Pinecone for similarity-based semantic search
+- **Fallback Search**: PostgreSQL full-text search when vector database is unavailable
+- **Hybrid Results**: Combines semantic understanding with exact phrase matching
+- **Real-time Results**: WebSocket connections for live search suggestions
 
-- `POST /upload` - Upload video files
-- `POST /process` - Process uploaded videos for search
-- `POST /search` - Search through video content
-- `GET /videos/{id}/transcript` - Get full video transcript
-- `GET /video-url/{filename}` - Get video streaming URL
+#### Scalable Storage Architecture
+ClipQuery implements a sophisticated storage strategy that balances performance, cost, and scalability:
 
-### Example API Usage
+- **Presigned S3 URLs**: Direct browser-to-S3 uploads bypass server payload limits
+- **CloudFront Distribution**: Global CDN for optimized video delivery
+- **Local Fallback**: Development-friendly local storage option
+- **Database Optimization**: Efficient video metadata and segment storage
 
-```python
-import requests
+## Engineering Decisions and Trade-offs
 
-# Upload video
-files = {'video': open('video.mp4', 'rb')}
-response = requests.post('http://localhost:8000/upload', files=files)
-video = response.json()
+### Storage Strategy: Presigned URLs vs Server Upload
 
-# Process video
-response = requests.post('http://localhost:8000/process', 
-    json={'video_id': video['id']})
+**Decision**: Implement presigned S3 URLs for direct browser uploads
+**Trade-off**: Added complexity in exchange for unlimited file size support
 
-# Search video
-response = requests.post('http://localhost:8000/search',
-    json={'query': 'machine learning', 'video_id': video['id']})
-results = response.json()
-```
+Traditional server-mediated uploads hit Vercel's 4.5MB serverless function limit, making video uploads impractical. Presigned URLs enable direct browser-to-S3 transfers, supporting files up to 500MB while maintaining security through time-limited, scoped permissions. This approach requires careful CORS configuration and error handling but eliminates server bandwidth constraints entirely.
 
-##  Docker Deployment
+### Transcription: Cloud API vs Self-hosted
 
-### Backend Only
-```bash
-cd backend
-docker build -t clipquery-backend .
-docker run -p 8000:8000 --env-file .env clipquery-backend
-```
+**Decision**: Use OpenAI Whisper API over self-hosted solutions
+**Trade-off**: API costs vs infrastructure complexity and accuracy
 
-### Full Stack (Coming Soon)
-Docker Compose configuration for full-stack deployment.
+Self-hosting Whisper would require GPU infrastructure, model management, and significant operational overhead. OpenAI's hosted Whisper provides superior accuracy with multilingual support, automatic punctuation, and speaker identification. The cost scales linearly with usage, making it economical for MVP development while maintaining production-ready quality.
 
-## Configuration
+### Search Implementation: Vector + Lexical Hybrid
 
-### Database Setup
-1. Create a [Supabase](https://supabase.com) project
-2. Get your PostgreSQL connection details
-3. Update your `.env` file with database credentials
+**Decision**: Implement both semantic (Pinecone) and lexical (PostgreSQL) search with graceful fallback
+**Trade-off**: System complexity vs search quality and reliability
 
-### Cloud Services
+Pure keyword search misses semantic relationships ("AI" vs "artificial intelligence"), while pure vector search can miss exact phrases. The hybrid approach provides semantic understanding through embeddings while maintaining exact phrase matching capabilities. Graceful fallback to PostgreSQL ensures system reliability when external vector services are unavailable.
 
-**Pinecone (Semantic Search)**
-- Creates better search results using AI embeddings
-- Automatically creates required index on first use
-- Falls back to basic text search if not configured
+### YouTube Integration: API + Proxy Architecture
 
-**AWS S3 (Video Storage)**
-- Enables cloud storage for better scalability  
-- Supports direct video streaming from S3
-- Falls back to local storage if not configured
+**Decision**: Implement YouTube transcript fetching with proxy support for IP restrictions
+**Trade-off**: Additional infrastructure vs comprehensive content coverage
 
-##  Development
+YouTube blocks most cloud provider IPs from transcript access, requiring proxy infrastructure for cloud deployments. This adds operational complexity but enables seamless integration with YouTube content, significantly expanding the platform's utility. The proxy configuration is optional, allowing local development while supporting production scalability.
 
-### Backend Development
-```bash
-# Install dependencies
-pip install -r requirements.txt
+### Frontend Architecture: Next.js App Router vs Pages Router
 
-# Run with auto-reload
-uvicorn app.main:app --reload
-```
+**Decision**: Use Next.js 15 App Router with React Server Components
+**Trade-off**: Cutting-edge features vs ecosystem maturity
 
-### Frontend Development
-```bash
-# Install dependencies
-npm install
+App Router provides superior performance through React Server Components, improved routing patterns, and better TypeScript integration. However, some third-party libraries have limited compatibility. The decision prioritizes long-term maintainability and performance over short-term development convenience.
 
-# Run development server
-npm run dev
+## Performance Optimizations
 
-# Build for production
-npm run build
-```
+### Client-Side Upload Optimization
+- **Multi-part uploads** for large files with resume capability
+- **Client-side validation** reduces server load and improves UX
+- **Progress tracking** with detailed upload status
+- **Error recovery** with automatic retry mechanisms
 
-##  Usage
+### Search Performance
+- **Vector index optimization** with metadata filtering
+- **Query caching** for frequently accessed content
+- **Pagination** for large result sets
+- **WebSocket connections** for real-time search suggestions
 
-1. **Upload Video**: Drag and drop or click to upload video files
-2. **Wait for Processing**: AI will transcribe the audio automatically
-3. **Search**: Use natural language to search through your video
-4. **Navigate**: Click search results to jump to exact timestamps
-5. **Browse**: View full transcript with highlighted search terms
+### Video Delivery
+- **CloudFront CDN** for global content delivery
+- **Adaptive bitrate streaming** support preparation
+- **Thumbnail generation** for quick preview
+- **Lazy loading** for improved page performance
 
-**Built with ❤️ for efficient video content discovery**
+## Security and Reliability
+
+### Security Measures
+- **Presigned URL time limits** prevent unauthorized access
+- **CORS policies** restrict cross-origin requests
+- **Input validation** on all user inputs
+- **Container security** with non-root user execution
+- **Secrets management** through AWS Parameter Store
+
+### Reliability Features
+- **Health checks** with automatic container restart
+- **Database migrations** for schema evolution
+- **Error handling** with detailed logging
+- **Service fallbacks** when external APIs are unavailable
+- **Multi-stage Docker builds** for smaller, secure images
+
+## Deployment Architecture
+
+### Cloud Infrastructure 
+- **AWS ECS Fargate**: Serverless container orchestration
+- **Application Load Balancer**: Traffic distribution and SSL termination
+- **CloudFront**: Global CDN with edge caching
+- **S3**: Object storage for video files and static assets
+- **RDS/Supabase**: Managed PostgreSQL with automatic backups
+- **ECR**: Private container registry
+
+## Future Enhancements
+
+### Immediate Improvements
+- **Batch processing** for multiple video uploads
+- **Advanced search filters** (date range, speaker, duration)
+- **Export functionality** for search results and transcripts
+- **Mobile app** for iOS and Android platforms
+
+### Advanced Features
+- **Multi-language support** with automatic language detection
+- **Speaker diarization** for multi-speaker content
+- **Visual scene analysis** using computer vision
+- **Integration APIs** for third-party applications
+
+### Scalability Improvements
+- **Microservices decomposition** for independent scaling
+- **Message queue system** for asynchronous processing
+- **Caching layer** with Redis for improved performance
+- **Auto-scaling policies** based on demand patterns
+
+## Technology Choices Rationale
+
+**FastAPI over Django/Flask**: Superior async support, automatic API documentation, and type safety made FastAPI ideal for a modern API-first application with real-time features.
+
+**Next.js over React SPA**: Server-side rendering improves SEO and initial load times critical for video content discovery, while App Router provides the latest React innovations.
+
+**PostgreSQL over MongoDB**: Video metadata and search relationships benefit from ACID compliance and complex query capabilities that relational databases provide.
+
+**Pinecone over self-hosted vectors**: Managed vector database eliminates operational overhead while providing enterprise-scale performance and reliability.
+
+**AWS over multi-cloud**: Deep integration between ECS, S3, CloudFront, and other AWS services reduces complexity and improves reliability for media-heavy applications.
