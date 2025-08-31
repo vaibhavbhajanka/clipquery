@@ -3,7 +3,7 @@
 ClipQuery is a comprehensive video content discovery platform that transforms how users search and navigate through video content using natural language queries. Built as a full-stack application with modern web technologies, it addresses the fundamental challenge of making video content searchable and accessible at scale.
 
 
-## 🖼️ Platform Demo
+## Platform Demo
 
 ### Uploaded Video Features
 
