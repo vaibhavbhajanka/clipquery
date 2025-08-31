@@ -1,6 +1,8 @@
 # ClipQuery
 
-ClipQuery is a comprehensive video content discovery platform that transforms how users search and navigate through video content using natural language queries. Built as a full-stack application with modern web technologies, it addresses the fundamental challenge of making video content searchable and accessible at scale.
+ClipQuery is a full-stack web application that enables users to search and navigate through video content using natural language queries. Built with modern web technologies, it transforms spoken words into searchable text with precise timestamp matching.
+
+The application accepts video uploads up to 3 minutes in length, providing a natural language search interface where users can ask questions like "When does the presenter mention new product features?" and receive precise timestamp results. Additionally, it includes an interactive chatbot feature with real-time WebSocket messaging for engaging with video content.
 
 ## Live Demo
 
