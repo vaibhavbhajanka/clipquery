@@ -77,7 +77,6 @@ The search implementation provides both semantic and lexical search capabilities
 - **Vector Search**: Uses Pinecone for similarity-based semantic search
 - **Fallback Search**: PostgreSQL full-text search when vector database is unavailable
 - **Hybrid Results**: Combines semantic understanding with exact phrase matching
-- **Real-time Results**: WebSocket connections for live search suggestions
 
 #### Scalable Storage Architecture
 ClipQuery implements a sophisticated storage strategy that balances performance, cost, and scalability:
@@ -117,49 +116,6 @@ Pure keyword search misses semantic relationships ("AI" vs "artificial intellige
 
 YouTube blocks most cloud provider IPs from transcript access, requiring proxy infrastructure for cloud deployments. This adds operational complexity but enables seamless integration with YouTube content, significantly expanding the platform's utility. The proxy configuration is optional, allowing local development while supporting production scalability.
 
-### Frontend Architecture: Next.js App Router vs Pages Router
-
-**Decision**: Use Next.js 15 App Router with React Server Components
-**Trade-off**: Cutting-edge features vs ecosystem maturity
-
-App Router provides superior performance through React Server Components, improved routing patterns, and better TypeScript integration. However, some third-party libraries have limited compatibility. The decision prioritizes long-term maintainability and performance over short-term development convenience.
-
-## Performance Optimizations
-
-### Client-Side Upload Optimization
-- **Multi-part uploads** for large files with resume capability
-- **Client-side validation** reduces server load and improves UX
-- **Progress tracking** with detailed upload status
-- **Error recovery** with automatic retry mechanisms
-
-### Search Performance
-- **Vector index optimization** with metadata filtering
-- **Query caching** for frequently accessed content
-- **Pagination** for large result sets
-- **WebSocket connections** for real-time search suggestions
-
-### Video Delivery
-- **CloudFront CDN** for global content delivery
-- **Adaptive bitrate streaming** support preparation
-- **Thumbnail generation** for quick preview
-- **Lazy loading** for improved page performance
-
-## Security and Reliability
-
-### Security Measures
-- **Presigned URL time limits** prevent unauthorized access
-- **CORS policies** restrict cross-origin requests
-- **Input validation** on all user inputs
-- **Container security** with non-root user execution
-- **Secrets management** through AWS Parameter Store
-
-### Reliability Features
-- **Health checks** with automatic container restart
-- **Database migrations** for schema evolution
-- **Error handling** with detailed logging
-- **Service fallbacks** when external APIs are unavailable
-- **Multi-stage Docker builds** for smaller, secure images
-
 ## Deployment Architecture
 
 ### Cloud Infrastructure 
@@ -170,34 +126,3 @@ App Router provides superior performance through React Server Components, improv
 - **RDS/Supabase**: Managed PostgreSQL with automatic backups
 - **ECR**: Private container registry
 
-## Future Enhancements
-
-### Immediate Improvements
-- **Batch processing** for multiple video uploads
-- **Advanced search filters** (date range, speaker, duration)
-- **Export functionality** for search results and transcripts
-- **Mobile app** for iOS and Android platforms
-
-### Advanced Features
-- **Multi-language support** with automatic language detection
-- **Speaker diarization** for multi-speaker content
-- **Visual scene analysis** using computer vision
-- **Integration APIs** for third-party applications
-
-### Scalability Improvements
-- **Microservices decomposition** for independent scaling
-- **Message queue system** for asynchronous processing
-- **Caching layer** with Redis for improved performance
-- **Auto-scaling policies** based on demand patterns
-
-## Technology Choices Rationale
-
-**FastAPI over Django/Flask**: Superior async support, automatic API documentation, and type safety made FastAPI ideal for a modern API-first application with real-time features.
-
-**Next.js over React SPA**: Server-side rendering improves SEO and initial load times critical for video content discovery, while App Router provides the latest React innovations.
-
-**PostgreSQL over MongoDB**: Video metadata and search relationships benefit from ACID compliance and complex query capabilities that relational databases provide.
-
-**Pinecone over self-hosted vectors**: Managed vector database eliminates operational overhead while providing enterprise-scale performance and reliability.
-
-**AWS over multi-cloud**: Deep integration between ECS, S3, CloudFront, and other AWS services reduces complexity and improves reliability for media-heavy applications.
