@@ -21,7 +21,7 @@ export async function GET(
     const data = await response.json()
     return NextResponse.json(data, { status: response.status })
   } catch (error) {
-    console.error('Proxy GET error:', error)
+    // console.error('Proxy GET error:', error)
     return NextResponse.json(
       { error: 'Failed to fetch data' },
       { status: 500 }
@@ -50,7 +50,7 @@ export async function POST(
     const data = await response.json()
     return NextResponse.json(data, { status: response.status })
   } catch (error) {
-    console.error('Proxy POST error:', error)
+    // console.error('Proxy POST error:', error)
     return NextResponse.json(
       { error: 'Failed to post data' },
       { status: 500 }
@@ -79,7 +79,7 @@ export async function PUT(
     const data = await response.json()
     return NextResponse.json(data, { status: response.status })
   } catch (error) {
-    console.error('Proxy PUT error:', error)
+    // console.error('Proxy PUT error:', error)
     return NextResponse.json(
       { error: 'Failed to update data' },
       { status: 500 }
@@ -109,7 +109,7 @@ export async function DELETE(
       return NextResponse.json(data, { status: response.status })
     }
   } catch (error) {
-    console.error('Proxy DELETE error:', error)
+    // console.error('Proxy DELETE error:', error)
     return NextResponse.json(
       { error: 'Failed to delete data' },
       { status: 500 }

@@ -40,11 +40,11 @@ export default function Home() {
         const transcriptData = await response.json()
         setTranscript(transcriptData)
       } else {
-        console.error('Failed to fetch transcript')
+        // console.error('Failed to fetch transcript')
         setTranscript([])
       }
     } catch (error) {
-      console.error('Error fetching transcript:', error)
+      // console.error('Error fetching transcript:', error)
       setTranscript([])
     }
   }

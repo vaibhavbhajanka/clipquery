@@ -67,7 +67,7 @@ export default function ChatPanel({ videoId, disabled, onSeek }: ChatPanelProps)
 
   // Connect to WebSocket when videoId is available
   useEffect(() => {
-    console.log('ChatPanel effect triggered - videoId:', videoId, 'disabled:', disabled)
+    // console.log('ChatPanel effect triggered - videoId:', videoId, 'disabled:', disabled)
     
     if (!videoId) {
       console.log('Not connecting - no videoId')
@@ -81,11 +81,11 @@ export default function ChatPanel({ videoId, disabled, onSeek }: ChatPanelProps)
         const config = await configResponse.json()
         
         const wsUrl = `${config.wsUrl}/ws/chat/${videoId}`
-        console.log('Attempting WebSocket connection to:', wsUrl)
+        // console.log('Attempting WebSocket connection to:', wsUrl)
         const ws = new WebSocket(wsUrl)
         
         ws.onopen = () => {
-          console.log('WebSocket connected successfully')
+          // console.log('WebSocket connected successfully')
           setIsConnected(true)
           setConnectionError(null)
           setReconnectAttempts(0) // Reset reconnect attempts on successful connection
@@ -136,7 +136,7 @@ export default function ChatPanel({ videoId, disabled, onSeek }: ChatPanelProps)
                 return prev
               })
               
-              console.log(`Response complete. Video context used: ${data.video_context_used}, Segments: ${data.segments_found || 0}`)
+              // console.log(`Response complete. Video context used: ${data.video_context_used}, Segments: ${data.segments_found || 0}`)
               
             } else if (data.type === 'error') {
               setIsTyping(false)
@@ -163,7 +163,7 @@ export default function ChatPanel({ videoId, disabled, onSeek }: ChatPanelProps)
             }
             
           } catch (error) {
-            console.error('Error parsing WebSocket message:', error)
+            // console.error('Error parsing WebSocket message:', error)
             setIsTyping(false)
             setConnectionError('Received invalid response from server')
             
@@ -173,7 +173,7 @@ export default function ChatPanel({ videoId, disabled, onSeek }: ChatPanelProps)
         }
 
         ws.onclose = (event) => {
-          console.log('WebSocket disconnected', event.code, event.reason)
+          // console.log('WebSocket disconnected', event.code, event.reason)
           setIsConnected(false)
           setIsTyping(false)
           
@@ -186,7 +186,7 @@ export default function ChatPanel({ videoId, disabled, onSeek }: ChatPanelProps)
             setConnectionError(`Connection lost. Reconnecting in ${Math.ceil(delay/1000)}s... (${reconnectAttempts + 1}/${maxReconnectAttempts})`)
             
             reconnectTimeoutRef.current = setTimeout(() => {
-              console.log(`Reconnect attempt ${reconnectAttempts + 1}/${maxReconnectAttempts}`)
+              // console.log(`Reconnect attempt ${reconnectAttempts + 1}/${maxReconnectAttempts}`)
               setReconnectAttempts(prev => prev + 1)
               setConnectionError(null)
               connectWebSocket()
@@ -197,7 +197,7 @@ export default function ChatPanel({ videoId, disabled, onSeek }: ChatPanelProps)
         }
 
         ws.onerror = (error) => {
-          console.error('WebSocket error:', error)
+          // console.error('WebSocket error:', error)
           setConnectionError('Connection error. Retrying...')
           setIsConnected(false)
           setIsTyping(false)
@@ -209,7 +209,7 @@ export default function ChatPanel({ videoId, disabled, onSeek }: ChatPanelProps)
         websocketRef.current = ws
 
       } catch (error) {
-        console.error('Failed to connect WebSocket:', error)
+        // console.error('Failed to connect WebSocket:', error)
         setConnectionError('Failed to connect to chat service')
       }
     }
@@ -267,7 +267,7 @@ export default function ChatPanel({ videoId, disabled, onSeek }: ChatPanelProps)
       }))
 
     } catch (error) {
-      console.error('Failed to send message:', error)
+      // console.error('Failed to send message:', error)
       setIsTyping(false)
       setConnectionError('Failed to send message. Please try again.')
       

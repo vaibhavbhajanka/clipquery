@@ -118,7 +118,7 @@ export default function VideoUpload({ onVideoUploaded }: VideoUploadProps) {
         return
       }
 
-      console.log(`Video duration: ${duration} seconds (${Math.floor(duration / 60)}:${Math.floor(duration % 60).toString().padStart(2, '0')})`)
+      // console.log(`Video duration: ${duration} seconds (${Math.floor(duration / 60)}:${Math.floor(duration % 60).toString().padStart(2, '0')})`)
     } catch (durationError) {
       console.warn('Could not validate video duration:', durationError)
       // Continue with upload if duration check fails (server will validate as backup)
