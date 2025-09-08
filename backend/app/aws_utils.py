@@ -4,6 +4,9 @@ from botocore.exceptions import ClientError
 from typing import Optional
 import tempfile
 import subprocess
+from app.core.logging_config import get_logger
+
+logger = get_logger("aws_utils")
 
 class AWSManager:
     """
@@ -16,11 +19,19 @@ class AWSManager:
     - Support multiple video formats (MP4, MOV, AVI, MKV, WebM)
     """
     def __init__(self):
+        self.region = os.getenv('AWS_REGION', 'us-west-1')
+        # Use regional endpoint to ensure URLs include region
         self.s3_client = boto3.client(
             's3',
-            region_name=os.getenv('AWS_REGION', 'us-west-1')
+            region_name=self.region,
+            endpoint_url=f'https://s3.{self.region}.amazonaws.com',
+            config=boto3.session.Config(
+                s3={'addressing_style': 'virtual'},
+                signature_version='s3v4'
+            )
         )
         self.bucket_name = os.getenv('AWS_S3_BUCKET')
+        logger.info(f"AWS S3 client initialized", extra={"region": self.region, "bucket": self.bucket_name})
         
     def upload_video(self, file_content: bytes, filename: str) -> bool:
         """Upload video to S3 bucket with proper content type and metadata"""
@@ -48,17 +59,16 @@ class AWSManager:
                     'upload-timestamp': str(int(__import__('time').time()))
                 }
             )
-            print(f"Successfully uploaded {filename} to S3 with content type {content_type}")
+            logger.info(f"Successfully uploaded to S3", extra={"video_filename": filename, "content_type": content_type})
             return True
         except ClientError as e:
-            print(f"Error uploading {filename} to S3: {e}")
+            logger.error(f"Error uploading to S3", extra={"video_filename": filename}, exc_info=True)
             return False
     
     def get_video_url(self, filename: str) -> str:
         """Get public S3 URL for direct video streaming"""
-        region = os.getenv('AWS_REGION', 'us-east-1')
-        public_url = f"https://{self.bucket_name}.s3.{region}.amazonaws.com/videos/{filename}"
-        print(f"Using public S3 URL: {public_url}")
+        public_url = f"https://{self.bucket_name}.s3.{self.region}.amazonaws.com/videos/{filename}"
+        logger.debug(f"Generated public S3 URL", extra={"video_filename": filename, "url": public_url})
         return public_url
     
     def video_exists(self, filename: str) -> bool:
@@ -70,7 +80,7 @@ class AWSManager:
             if e.response['Error']['Code'] == '404':
                 return False
             else:
-                print(f"Error checking video existence: {e}")
+                logger.error(f"Error checking video existence", extra={"video_filename": filename}, exc_info=True)
                 return False
     
     def delete_video(self, filename: str) -> bool:
@@ -80,10 +90,10 @@ class AWSManager:
                 Bucket=self.bucket_name,
                 Key=f"videos/{filename}"
             )
-            print(f"Successfully deleted {filename} from S3")
+            logger.info(f"Successfully deleted from S3", extra={"video_filename": filename})
             return True
         except ClientError as e:
-            print(f"Error deleting {filename} from S3: {e}")
+            logger.error(f"Error deleting from S3", extra={"video_filename": filename}, exc_info=True)
             return False
     
     def validate_video_duration_server(self, file_path: str) -> Optional[float]:
@@ -111,7 +121,7 @@ class AWSManager:
             
             return duration
         except (subprocess.CalledProcessError, json.JSONDecodeError, KeyError) as e:
-            print(f"Error getting video duration: {e}")
+            logger.error(f"Error getting video duration", extra={"video_path": video_path}, exc_info=True)
             return None
     
     def generate_presigned_upload_url(self, filename: str, content_type: str = 'video/mp4', expires_in: int = 3600) -> Optional[dict]:
@@ -140,7 +150,7 @@ class AWSManager:
                 'key': key
             }
         except ClientError as e:
-            print(f"Error generating presigned URL: {e}")
+            logger.error(f"Error generating presigned URL", extra={"video_filename": filename}, exc_info=True)
             return None
 
 # Global AWS manager instance - only initialized if S3 bucket is configured

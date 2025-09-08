@@ -373,3 +373,6 @@ coverage/
 
 docs/
 infrastructure/
+new-task-definition.json
+task-definition.json
+aws-migration-backup.json

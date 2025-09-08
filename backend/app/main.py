@@ -5,20 +5,33 @@ from contextlib import asynccontextmanager
 import os
 import json
 
+from app.core.logging_config import setup_logging, get_logger
 from app.database import create_tables
 from app.routes.video_routes import router as video_router
 from app.routes.youtube_routes import router as youtube_router
 from app.routes.search_routes import router as search_router
 
 load_dotenv()
+setup_logging()
+
+logger = get_logger("main")
 
 # Create tables on startup
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
-    create_tables()
+    logger.info("Starting ClipQuery Backend API")
+    try:
+        create_tables()
+        logger.info("Database tables created successfully")
+    except Exception as e:
+        logger.error("Failed to create database tables", exc_info=True)
+        raise
+    
     yield
-    # Shutdown (nothing to do for now)
+    
+    # Shutdown
+    logger.info("Shutting down ClipQuery Backend API")
 
 app = FastAPI(title="ClipQuery Backend", version="1.0.0", lifespan=lifespan)
 
@@ -27,9 +40,11 @@ app = FastAPI(title="ClipQuery Backend", version="1.0.0", lifespan=lifespan)
 cors_origins = os.getenv("CORS_ORIGINS", '["http://localhost:3000", "http://localhost:3001"]')
 try:
     allowed_origins = json.loads(cors_origins)
+    logger.info(f"CORS configured for origins: {allowed_origins}")
 except json.JSONDecodeError:
     # Fallback to default origins if parsing fails
     allowed_origins = ["http://localhost:3000", "http://localhost:3001"]
+    logger.warning(f"Invalid CORS_ORIGINS format, using defaults: {allowed_origins}")
 
 app.add_middleware(
     CORSMiddleware,

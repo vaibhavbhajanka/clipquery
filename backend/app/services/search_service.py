@@ -13,17 +13,25 @@ except ImportError:
     Pinecone = pinecone
 
 from app.models import VideoSegment as VideoSegmentModel
+from app.core.logging_config import get_logger
+
+logger = get_logger("services.search")
 
 
 async def unified_video_search(db: Session, video_id: str, query: str, top_k: int = 5):
     """Unified search function used by both chat and search endpoints"""
     try:
-        print(f"Searching for: '{query}' in video {video_id}")
+        logger.info(f"Searching for query in video", extra={
+            "search_query": query, 
+            "video_id": video_id, 
+            "top_k": top_k
+        })
         
         # Check if Pinecone is configured
         pinecone_api_key = os.getenv("PINECONE_API_KEY")
         if pinecone_api_key and pinecone_api_key != "your_pinecone_key_here":
             try:
+                logger.debug("Using Pinecone for semantic search")
                 # Use Pinecone for semantic search
                 openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
                 pc = Pinecone(api_key=pinecone_api_key)
@@ -31,12 +39,14 @@ async def unified_video_search(db: Session, video_id: str, query: str, top_k: in
                 index_name = os.getenv("PINECONE_INDEX_NAME", "clipquery-segments")
                 if index_name in [index.name for index in pc.list_indexes()]:
                     # Generate query embedding
+                    logger.debug(f"Generating embedding for query using text-embedding-3-small")
                     embedding = openai_client.embeddings.create(
                         model="text-embedding-3-small",
                         input=query,
                     )
                     
                     # Search Pinecone
+                    logger.debug(f"Querying Pinecone index: {index_name}")
                     index = pc.Index(index_name)
                     search_results = index.query(
                         vector=embedding.data[0].embedding,
@@ -55,17 +65,26 @@ async def unified_video_search(db: Session, video_id: str, query: str, top_k: in
                         for match in search_results.matches if match.metadata.get("text", "").strip()
                     ]
                     
-                    print(f"Pinecone found {len(results)} results")
+                    logger.info(f"Pinecone search completed", extra={
+                        "results_count": len(results),
+                        "video_id": video_id
+                    })
+                    
+                    # Log top results for debugging
                     for i, result in enumerate(results[:3], 1):
-                        print(f"   {i}. [{result['start_time']:.1f}s] (score: {result['confidence']:.3f}) {result['text'][:50]}...")
+                        logger.debug(f"Result {i}: [{result['start_time']:.1f}s] (score: {result['confidence']:.3f}) {result['text'][:50]}...")
                     
                     return results
+                else:
+                    logger.warning(f"Pinecone index '{index_name}' not found, falling back to database")
                     
             except Exception as pinecone_error:
-                print(f"Pinecone error: {pinecone_error}")
+                logger.error(f"Pinecone search failed, falling back to database", exc_info=True)
+        else:
+            logger.debug("Pinecone not configured, using database search")
         
         # Fallback to database search
-        print(f"Using database search fallback")
+        logger.debug("Using database search fallback")
         segments = db.query(VideoSegmentModel).filter(
             VideoSegmentModel.video_id == video_id,
             VideoSegmentModel.text.ilike(f"%{query}%")
@@ -94,11 +113,14 @@ async def unified_video_search(db: Session, video_id: str, query: str, top_k: in
             for segment in segments
         ]
         
-        print(f"Database found {len(results)} results")
+        logger.info(f"Database search completed", extra={
+            "results_count": len(results),
+            "video_id": video_id
+        })
         return results
         
     except Exception as e:
-        print(f"Search error: {e}")
+        logger.error(f"Search failed", extra={"video_id": video_id, "search_query": query}, exc_info=True)
         return []
 
 
@@ -114,15 +136,15 @@ async def handle_chat_websocket(websocket: WebSocket, video_id: str, db: Session
             if not user_message.strip():
                 continue
                 
-            print(f"User message: {user_message}")
+            logger.info(f"Received chat message", extra={"user_msg": user_message, "video_id": video_id})
             
             # Use unified search function (same as search endpoint)
             try:
                 search_results = await unified_video_search(db, video_id, user_message, top_k=5)
-                print(f"Chat search: Found {len(search_results)} results")
+                logger.debug(f"Chat search completed", extra={"results_count": len(search_results)})
                 
             except Exception as e:
-                print(f"Chat search error: {e}")
+                logger.error(f"Chat search failed", extra={"video_id": video_id}, exc_info=True)
                 search_results = []
             
             # Build context from search results with timestamp info
@@ -130,7 +152,7 @@ async def handle_chat_websocket(websocket: WebSocket, video_id: str, db: Session
             context_with_timestamps = []
             
             if search_results:
-                print(f"Building context from {len(search_results)} results")
+                logger.debug(f"Building context from search results", extra={"results_count": len(search_results)})
                 
                 # Process all results and build context with timestamp references
                 for i, result in enumerate(search_results):
@@ -154,9 +176,9 @@ async def handle_chat_websocket(websocket: WebSocket, video_id: str, db: Session
                             'relevance_rank': i + 1
                         })
                         
-                        print(f"   [{start_time:.1f}s] (score: {confidence:.3f}): {text[:60]}...")
+                        logger.debug(f"Context segment added: [{start_time:.1f}s] (score: {confidence:.3f}): {text[:60]}...")
             else:
-                print("No segments found for context building")
+                logger.debug("No segments found for context building")
             
             # Combine context with timestamps for better answers
             video_context = " ".join(context_with_timestamps) if context_with_timestamps else ""
@@ -215,11 +237,13 @@ Guidelines for responses:
                     }))
                     
                     # Enhanced debugging output
-                    print(f"Chat Response Complete for query: '{user_message}'")
-                    print(f"   Search Results: {len(search_results)} segments found")
-                    print(f"   Context Used: {bool(video_context)}")
-                    print(f"   Response Length: {len(full_response)} chars")
-                    print(f"   AI Response: \"{full_response[:100]}...\"" if len(full_response) > 100 else f"   AI Response: \"{full_response}\"")
+                    logger.info(f"Chat response completed", extra={
+                        "user_query": user_message,
+                        "search_results_count": len(search_results),
+                        "context_used": bool(video_context),
+                        "response_length": len(full_response)
+                    })
+                    logger.debug(f"AI response preview: {full_response[:100]}{'...' if len(full_response) > 100 else ''}")
                     
                     # Check if response contains timestamp patterns
                     timestamp_patterns = [
@@ -233,39 +257,38 @@ Guidelines for responses:
                         found_timestamps.extend(matches)
                     
                     if found_timestamps:
-                        print(f"   Timestamps in response: {found_timestamps}")
+                        logger.debug(f"Timestamps found in response: {found_timestamps}")
                     else:
-                        print(f"   No timestamps found in AI response")
+                        logger.debug("No timestamps found in AI response")
                     
                     if search_segments:
-                        print(f"   Matched Segments:")
+                        logger.debug(f"Matched segments sent to frontend: {len(search_segments)}")
                         for i, seg in enumerate(search_segments, 1):
                             similarity = seg.get('similarity_score', 0)
                             confidence = seg.get('confidence', 0)
                             timestamp = seg.get('start_time', 0)
                             text_preview = seg.get('text', '')[:60] + "..." if len(seg.get('text', '')) > 60 else seg.get('text', '')
-                            print(f"      {i}. [{timestamp:.1f}s] (score:{confidence:.3f})")
-                            print(f"         \"{text_preview}\"")
+                            logger.debug(f"Segment {i}: [{timestamp:.1f}s] (score:{confidence:.3f}) \"{text_preview}\"")
                     else:
-                        print(f"   No segments sent to frontend")
-                        print(f"   This means no context was provided to the AI")
+                        logger.warning("No segments sent to frontend - no context provided to AI")
                     
                 except Exception as stream_error:
-                    print(f"Streaming error: {stream_error}")
+                    logger.error(f"OpenAI streaming error", exc_info=True)
                     await websocket.send_text(json.dumps({
                         "type": "error",
                         "message": "Response streaming interrupted"
                     }))
                 
             except Exception as e:
-                print(f"OpenAI error: {e}")
+                logger.error(f"OpenAI API error", exc_info=True)
                 await websocket.send_text(json.dumps({
                     "type": "error",
                     "message": f"AI service temporarily unavailable: {str(e)}"
                 }))
     
     except WebSocketDisconnect:
+        logger.info(f"Chat websocket disconnected for video {video_id}")
         raise  # Re-raise to be handled by caller
     except Exception as e:
-        print(f"Chat handler error: {e}")
+        logger.error(f"Chat websocket handler error for video {video_id}", exc_info=True)
         raise

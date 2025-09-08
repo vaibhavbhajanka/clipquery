@@ -4,6 +4,9 @@ from sqlalchemy.orm import sessionmaker
 import os
 from dotenv import load_dotenv
 from urllib.parse import quote_plus
+from app.core.logging_config import get_logger
+
+logger = get_logger("database")
 
 load_dotenv()
 
@@ -39,5 +42,5 @@ def create_tables():
     try:
         Base.metadata.create_all(bind=engine)
     except Exception as e:
-        print(f"Failed to create database tables: {str(e)}")
+        logger.error(f"Failed to create database tables", exc_info=True)
         raise

@@ -7,6 +7,9 @@ from app.database import get_db
 from app.models import Video as VideoModel, VideoSegment as VideoSegmentModel
 from app.schemas import SearchRequest, SearchResult, VideoSegment
 from app.services.search_service import unified_video_search, handle_chat_websocket
+from app.core.logging_config import get_logger
+
+logger = get_logger("routes.search")
 
 router = APIRouter()
 
@@ -34,7 +37,7 @@ async def search_video(
         return results
         
     except Exception as error:
-        print(f"Search error: {error}")
+        logger.error(f"Search failed", extra={"video_id": request.video_id, "search_query": request.query}, exc_info=True)
         raise HTTPException(status_code=500, detail="Search failed")
 
 @router.get("/videos/{video_id}/transcript", response_model=List[VideoSegment])
@@ -54,17 +57,17 @@ async def get_video_transcript(video_id: str, db: Session = Depends(get_db)):
         return segments
         
     except Exception as error:
-        print(f"Transcript fetch error: {error}")
+        logger.error(f"Transcript fetch failed", extra={"video_id": video_id}, exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to fetch transcript")
 
 @router.websocket("/ws/chat/{video_id}")
 async def chat_websocket(websocket: WebSocket, video_id: str):
     """WebSocket endpoint for real-time chat with video context"""
-    print(f"WebSocket connection attempt for video {video_id}")
+    logger.info(f"WebSocket connection attempt", extra={"video_id": video_id})
     
     # Accept the connection first
     await websocket.accept()
-    print(f"WebSocket connected for video {video_id}")
+    logger.info(f"WebSocket connected", extra={"video_id": video_id})
     
     # Get database session
     db = next(get_db())
@@ -72,7 +75,7 @@ async def chat_websocket(websocket: WebSocket, video_id: str):
     try:
         await handle_chat_websocket(websocket, video_id, db)
     except WebSocketDisconnect:
-        print(f"Client disconnected from chat for video {video_id}")
+        logger.info(f"Client disconnected from chat", extra={"video_id": video_id})
     except Exception as e:
-        print(f"Chat WebSocket error: {e}")
+        logger.error(f"Chat WebSocket error", extra={"video_id": video_id}, exc_info=True)
         await websocket.close()

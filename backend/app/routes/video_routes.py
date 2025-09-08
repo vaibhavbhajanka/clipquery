@@ -12,6 +12,9 @@ from app.schemas import Video, ProcessRequest, ProcessingResult
 from pydantic import BaseModel
 from app.aws_utils import aws_manager
 from app.services.video_service import process_video
+from app.core.logging_config import get_logger
+
+logger = get_logger("routes.video")
 
 router = APIRouter()
 
@@ -74,11 +77,11 @@ async def complete_upload(request: CompleteUploadRequest, db: Session = Depends(
         db.commit()
         db.refresh(db_video)
         
-        print(f"Video record created with ID: {db_video.id}")
+        logger.info(f"Video record created with ID: {db_video.id}")
         return db_video
         
     except Exception as error:
-        print(f"Complete upload error: {error}")
+        logger.error(f"Complete upload error: {error}")
         raise HTTPException(status_code=500, detail=f"Failed to complete upload: {str(error)}")
 
 @router.post("/upload", response_model=Video)
@@ -89,7 +92,7 @@ async def upload_video(
     """Upload a video file"""
     temp_file_path = None
     try:
-        print(f"Received upload request for: {video.filename}")
+        logger.info(f"Received upload request for: {video.filename}")
         
         # Validate file type
         if not video.content_type or not video.content_type.startswith('video/'):
@@ -125,24 +128,24 @@ async def upload_video(
                     detail=f"Video is {minutes}:{seconds:02d} long. Please upload videos under 3 minutes."
                 )
             
-            print(f"Video duration: {duration} seconds" if duration else "Duration validation skipped")
+            logger.info(f"Video duration: {duration} seconds" if duration else "Duration validation skipped")
         
         # Upload to S3 if configured, otherwise save locally
         if aws_manager:
-            print(f"AWS Manager available, uploading {filename} to S3 bucket: {aws_manager.bucket_name}")
+            logger.info(f"AWS Manager available, uploading {filename} to S3 bucket: {aws_manager.bucket_name}")
             success = aws_manager.upload_video(file_content, filename)
             if not success:
                 raise HTTPException(status_code=500, detail="Failed to upload video to cloud storage")
             
             file_path = f"s3://{aws_manager.bucket_name}/videos/{filename}"
-            print(f"✅ Video uploaded to S3: {file_path}")
+            logger.info(f"Video uploaded to S3: {file_path}")
         else:
             # Fallback to local storage
-            print(f"⚠️  No AWS Manager - saving {filename} locally (AWS credentials missing?)")
+            logger.warning(f"No AWS Manager - saving {filename} locally (AWS credentials missing?)")
             file_path = os.path.join(UPLOAD_DIR, filename)
             with open(file_path, "wb") as buffer:
                 buffer.write(file_content)
-            print(f"Video saved locally: {file_path}")
+            logger.info(f"Video saved locally: {file_path}")
         
         # Create video record in database
         db_video = VideoModel(
@@ -158,14 +161,14 @@ async def upload_video(
         db.commit()
         db.refresh(db_video)
         
-        print(f"Video saved to database with ID: {db_video.id}")
+        logger.info(f"Video saved to database with ID: {db_video.id}")
         
         return db_video
         
     except HTTPException:
         raise  # Re-raise HTTP exceptions
     except Exception as error:
-        print(f"Upload error: {error}")
+        logger.error(f"Upload error: {error}")
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(error)}")
@@ -175,7 +178,7 @@ async def upload_video(
             try:
                 os.unlink(temp_file_path)
             except Exception as e:
-                print(f"Error cleaning up temp file: {e}")
+                logger.warning(f"Error cleaning up temp file: {e}")
 
 @router.post("/process", response_model=ProcessingResult)
 async def process_video_endpoint(
@@ -207,7 +210,7 @@ async def get_video_url(filename: str, db: Session = Depends(get_db)):
         if aws_manager and video.file_path.startswith('s3://'):
             try:
                 s3_url = aws_manager.get_video_url(filename)
-                print(f"Resolved S3 URL for {filename}: {s3_url}")
+                logger.info(f"Resolved S3 URL for {filename}: {s3_url}")
                 return {
                     "url": s3_url, 
                     "type": "s3-public",
@@ -217,7 +220,7 @@ async def get_video_url(filename: str, db: Session = Depends(get_db)):
                     }
                 }
             except Exception as e:
-                print(f"Error getting S3 URL for {filename}: {e}")
+                logger.error(f"Error getting S3 URL for {filename}: {e}")
                 # Fall through to local fallback
         
         # Fallback to local URL
@@ -243,7 +246,7 @@ async def get_video_url(filename: str, db: Session = Depends(get_db)):
     except HTTPException:
         raise
     except Exception as error:
-        print(f"Error getting video URL: {error}")
+        logger.error(f"Error getting video URL: {error}")
         raise HTTPException(status_code=500, detail="Failed to get video URL")
 
 @router.get("/video/{filename}")
@@ -258,7 +261,7 @@ async def serve_video(filename: str, db: Session = Depends(get_db)):
         # For S3 videos, redirect to the public S3 URL instead of serving through backend
         if aws_manager and video.file_path.startswith('s3://'):
             s3_url = aws_manager.get_video_url(filename)
-            print(f"Redirecting S3 video to direct URL: {s3_url}")
+            logger.info(f"Redirecting S3 video to direct URL: {s3_url}")
             return {"error": "S3 videos should be accessed directly", "redirect_url": s3_url}
         
         # Serve local file only
@@ -282,7 +285,7 @@ async def serve_video(filename: str, db: Session = Depends(get_db)):
     except HTTPException:
         raise
     except Exception as error:
-        print(f"Video serving error: {error}")
+        logger.error(f"Video serving error: {error}")
         raise HTTPException(status_code=500, detail="Failed to serve video")
 
 @router.get("/videos", response_model=List[Video])

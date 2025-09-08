@@ -1,0 +1,14 @@
+{
+  "name": "clipquery-youtube-transcripts",
+  "version": "1.0.0",
+  "description": "Cloudflare Worker for fetching YouTube transcripts",
+  "main": "worker.js",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "deploy-dev": "wrangler deploy --env dev"
+  },
+  "devDependencies": {
+    "wrangler": "^4.34.0"
+  }
+}

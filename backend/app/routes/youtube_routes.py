@@ -5,6 +5,10 @@ from app.database import get_db
 from app.models import Video as VideoModel
 from app.schemas import Video, YouTubeUploadRequest
 from app.services.youtube_service import extract_youtube_id, get_youtube_video_info
+from app.services.video_service import process_video
+from app.core.logging_config import get_logger
+
+logger = get_logger("routes.youtube")
 
 router = APIRouter()
 
@@ -15,11 +19,11 @@ async def upload_youtube_video(
 ):
     """Process a YouTube video URL and fetch its transcript"""
     try:
-        print(f"Received YouTube URL: {request.url}")
+        logger.info(f"Received YouTube URL", extra={"url": request.url})
         
         # Extract YouTube video ID
         youtube_id = extract_youtube_id(request.url)
-        print(f"YouTube Video ID: {youtube_id}")
+        logger.info(f"Extracted YouTube video ID", extra={"youtube_id": youtube_id, "url": request.url})
         
         # Check if this video already exists
         existing_video = db.query(VideoModel).filter(
@@ -28,7 +32,7 @@ async def upload_youtube_video(
         ).first()
         
         if existing_video:
-            print(f"YouTube video already exists with ID: {existing_video.id}")
+            logger.info(f"YouTube video already exists", extra={"video_id": existing_video.id, "youtube_id": youtube_id})
             return existing_video
         
         # Get video information
@@ -59,7 +63,13 @@ async def upload_youtube_video(
         db.commit()
         db.refresh(db_video)
         
-        print(f"YouTube video saved to database with ID: {db_video.id}")
+        logger.info(f"YouTube video saved to database", extra={"video_id": db_video.id, "youtube_id": youtube_id})
+        
+        # Process the video immediately (fetch transcript and create segments)
+        await process_video(db_video.id, db)
+        
+        # Refresh to get updated status and segments
+        db.refresh(db_video)
         
         return db_video
         
@@ -68,7 +78,7 @@ async def upload_youtube_video(
     except HTTPException:
         raise
     except Exception as error:
-        print(f"YouTube upload error: {error}")
+        logger.error(f"YouTube upload failed", extra={"url": request.url}, exc_info=True)
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Failed to process YouTube video: {str(error)}")

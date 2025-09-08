@@ -1,0 +1,18 @@
+# Cloudflare Workers configuration file
+name = "clipquery-youtube-transcripts"
+main = "worker.js"
+compatibility_date = "2024-01-01"
+
+# Worker settings - using default .workers.dev domain
+
+# Environment variables (optional - set via Cloudflare dashboard)
+[vars]
+# Add any environment variables here if needed
+
+# For development/testing
+[env.dev]
+name = "clipquery-youtube-transcripts-dev"
+
+# For production
+[env.production]
+name = "clipquery-youtube-transcripts"

@@ -9,13 +9,16 @@ from openai import OpenAI
 from app.models import Video as VideoModel, VideoSegment as VideoSegmentModel
 from app.schemas import ProcessingResult
 from app.aws_utils import aws_manager
-from app.services.youtube_service import fetch_youtube_transcript_smart
+from app.services.youtube_service import fetch_youtube_transcript
+from app.core.logging_config import get_logger
 
 try:
     from pinecone import Pinecone
 except ImportError:
     import pinecone
     Pinecone = pinecone
+
+logger = get_logger("services.video")
 
 def extract_audio_for_whisper(video_path: str) -> str:
     """
@@ -38,8 +41,8 @@ def extract_audio_for_whisper(video_path: str) -> str:
             result = subprocess.run(cmd, check=True, capture_output=True, text=True)
             return temp_audio.name
         except subprocess.CalledProcessError as e:
-            print(f"FFmpeg error: {e.stderr}")
-            raise HTTPException(status_code=500, detail=f"Audio extraction failed: {e.stderr}")
+            logger.error(f"FFmpeg audio extraction failed", extra={"stderr": e.stderr}, exc_info=True)
+            raise HTTPException(status_code=500, detail="Audio extraction failed")
 
 def create_overlapping_windows(segments: list, window_size: int = 10, overlap: int = 5) -> list:
     """Create 10-second overlapping windows for precise timestamp matching"""
@@ -95,7 +98,7 @@ async def process_video(video_id: str, db: Session) -> ProcessingResult:
         
         # Handle YouTube videos - process transcript directly
         if db_video.video_type == "youtube" and db_video.youtube_id:
-            print(f"Processing YouTube video: {db_video.youtube_id}")
+            logger.info(f"Processing YouTube video", extra={"youtube_id": db_video.youtube_id, "video_id": video_id})
             
             # Check if transcript segments already exist
             existing_segments = db.query(VideoSegmentModel).filter(
@@ -103,7 +106,10 @@ async def process_video(video_id: str, db: Session) -> ProcessingResult:
             ).count()
             
             if existing_segments > 0:
-                print(f"Transcript segments already exist ({existing_segments} segments), skipping fetch")
+                logger.info(f"Transcript segments already exist, skipping fetch", extra={
+                    "existing_segments": existing_segments, 
+                    "video_id": video_id
+                })
                 # Get existing segments for window creation
                 db_segments = db.query(VideoSegmentModel).filter(
                     VideoSegmentModel.video_id == video_id
@@ -115,7 +121,7 @@ async def process_video(video_id: str, db: Session) -> ProcessingResult:
                 } for seg in db_segments]
             else:
                 # Fetch YouTube transcript with smart segmentation (Whisper-like)
-                processed_segments = fetch_youtube_transcript_smart(db_video.youtube_id)
+                processed_segments = await fetch_youtube_transcript(db_video.youtube_id)
                 
                 # Store segments in database
                 for segment in processed_segments:
@@ -127,7 +133,10 @@ async def process_video(video_id: str, db: Session) -> ProcessingResult:
                     )
                     db.add(db_segment)
             
-            print(f"Processed {len(processed_segments)} YouTube transcript segments")
+            logger.info(f"Processed YouTube transcript segments", extra={
+                "segments_count": len(processed_segments),
+                "video_id": video_id
+            })
             
         else:
             # Handle uploaded videos - process with Whisper
@@ -135,7 +144,10 @@ async def process_video(video_id: str, db: Session) -> ProcessingResult:
         
         # Create overlapping windows for precise search
         windows = create_overlapping_windows(processed_segments)
-        print(f"Created {len(windows)} search windows")
+        logger.info(f"Created search windows", extra={
+            "windows_count": len(windows),
+            "video_id": video_id
+        })
         
         # Generate embeddings and store in Pinecone (if configured)
         await store_embeddings_in_pinecone(video_id, windows)
@@ -164,16 +176,16 @@ async def process_video(video_id: str, db: Session) -> ProcessingResult:
             db_video.status = "failed"
             db.commit()
         
-        print(f"Processing error: {e}")
-        raise HTTPException(status_code=500, detail=f"Processing failed: {str(e)}")
+        logger.error(f"Video processing failed", extra={"video_id": video_id}, exc_info=True)
+        raise HTTPException(status_code=500, detail="Video processing failed")
     finally:
         # Clean up temp file if it was created for S3 video
         if temp_video_path and os.path.exists(temp_video_path):
             try:
                 os.unlink(temp_video_path)
-                print(f"Cleaned up temp file: {temp_video_path}")
+                logger.debug(f"Cleaned up temp file: {temp_video_path}")
             except Exception as e:
-                print(f"Error cleaning up temp file: {e}")
+                logger.warning(f"Failed to cleanup temp file: {temp_video_path}", exc_info=True)
 
 async def process_uploaded_video(db_video, video_id: str, video_path: str, db: Session) -> list:
     """Process uploaded video with Whisper"""
@@ -181,7 +193,7 @@ async def process_uploaded_video(db_video, video_id: str, video_path: str, db: S
     
     # Handle S3 videos - download to temp file for processing
     if video_path.startswith('s3://') and aws_manager:
-        print(f"Downloading video from S3 for processing: {video_path}")
+        logger.info(f"Downloading video from S3 for processing", extra={"s3_path": video_path, "video_id": video_id})
         
         # Download from S3 to temp file
         s3_client = boto3.client('s3',
@@ -202,7 +214,7 @@ async def process_uploaded_video(db_video, video_id: str, video_path: str, db: S
             temp_video_path = temp_file.name
             video_path = temp_video_path
         
-        print(f"Downloaded to temp file: {video_path}")
+        logger.debug(f"Downloaded S3 video to temp file", extra={"temp_path": video_path, "video_id": video_id})
     
     # Check if local file exists
     if not os.path.exists(video_path):
@@ -212,12 +224,12 @@ async def process_uploaded_video(db_video, video_id: str, video_path: str, db: S
     file_size = os.path.getsize(video_path)
     size_mb = file_size / (1024 * 1024)
     
-    print(f"Processing video: {video_id}, size: {size_mb:.1f}MB")
+    logger.info(f"Processing uploaded video", extra={"video_id": video_id, "size_mb": round(size_mb, 1)})
     
     openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
     
     # Always extract audio for optimal performance (10x faster uploads, same accuracy)
-    print(f"Extracting audio from {size_mb:.1f}MB video for faster processing")
+    logger.info(f"Extracting audio for processing", extra={"size_mb": round(size_mb, 1), "video_id": video_id})
     audio_path = extract_audio_for_whisper(video_path)
     
     try:
@@ -233,7 +245,7 @@ async def process_uploaded_video(db_video, video_id: str, video_path: str, db: S
         try:
             os.unlink(audio_path)
         except Exception as e:
-            print(f"Warning: Could not cleanup temp audio file {audio_path}: {e}")
+            logger.warning(f"Failed to cleanup temp audio file", extra={"audio_path": audio_path}, exc_info=True)
     
     # Convert to our format
     processed_segments = []
@@ -244,7 +256,7 @@ async def process_uploaded_video(db_video, video_id: str, video_path: str, db: S
             "end": segment.end
         })
     
-    print(f"Processed {len(processed_segments)} segments")
+    logger.info(f"Video processing completed", extra={"segments_count": len(processed_segments), "video_id": video_id})
     
     # Store segments in database
     for segment in processed_segments:
@@ -267,13 +279,13 @@ async def store_embeddings_in_pinecone(video_id: str, windows: list):
             # Create index if it doesn't exist
             index_name = os.getenv("PINECONE_INDEX_NAME", "clipquery-segments")
             if index_name not in [index.name for index in pc.list_indexes()]:
-                print(f"Creating Pinecone index: {index_name}")
+                logger.info(f"Creating Pinecone index", extra={"index_name": index_name})
                 pc.create_index(
                     name=index_name,
                     dimension=1536,  # text-embedding-3-small dimension
                     metric="cosine"
                 )
-                print(f"Created Pinecone index: {index_name}")
+                logger.info(f"Created Pinecone index", extra={"index_name": index_name})
             
             index = pc.Index(index_name)
             openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
@@ -303,7 +315,7 @@ async def store_embeddings_in_pinecone(video_id: str, windows: list):
             # Batch upsert to Pinecone
             if vectors_to_upsert:
                 index.upsert(vectors=vectors_to_upsert)
-                print(f"Stored {len(vectors_to_upsert)} vectors in Pinecone")
+                logger.info(f"Stored vectors in Pinecone", extra={"vectors_count": len(vectors_to_upsert), "video_id": video_id})
         except Exception as e:
-            print(f"Pinecone storage failed: {e}")
+            logger.error(f"Pinecone storage failed", extra={"video_id": video_id}, exc_info=True)
             # Continue without failing the entire process
