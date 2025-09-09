@@ -205,13 +205,121 @@ def group_small_segments(segments: list) -> list:
     return result
 
 
+def whisper_style_segmentation(raw_segments: list) -> list:
+    """
+    Create Whisper-style segments with consistent timing (5-8 seconds each)
+    This provides better synchronization with transcript viewers
+    """
+    print(f"\n========== WHISPER-STYLE SEGMENTATION ==========")
+    print(f"Input: {len(raw_segments)} raw segments")
+    
+    if not raw_segments:
+        return []
+    
+    # Target segment duration (like Whisper)
+    target_duration = 6.0  # 6 seconds per segment (Whisper's sweet spot)
+    min_duration = 4.0     # Minimum 4 seconds
+    max_duration = 10.0    # Maximum 10 seconds
+    
+    # Collect all text with timing
+    all_words = []
+    for segment in raw_segments:
+        text = segment["text"].strip()
+        if not text:
+            continue
+            
+        words = text.split()
+        segment_duration = segment["end"] - segment["start"]
+        time_per_word = segment_duration / len(words) if words else 0
+        
+        for i, word in enumerate(words):
+            word_start = segment["start"] + (i * time_per_word)
+            word_end = word_start + time_per_word
+            all_words.append({
+                "word": word,
+                "start": word_start,
+                "end": word_end
+            })
+    
+    if not all_words:
+        return []
+    
+    print(f"Total words: {len(all_words)}")
+    print(f"Target duration per segment: {target_duration}s")
+    
+    # Create segments with consistent timing
+    result = []
+    current_segment = {
+        "words": [],
+        "start": all_words[0]["start"]
+    }
+    
+    for i, word_data in enumerate(all_words):
+        current_segment["words"].append(word_data["word"])
+        
+        # Calculate current segment duration
+        current_duration = word_data["end"] - current_segment["start"]
+        
+        # Decide if we should finalize this segment
+        should_finalize = False
+        
+        if current_duration >= min_duration:
+            # Check for natural break points
+            word = word_data["word"].lower()
+            
+            # Sentence endings (strong break)
+            if word.endswith(('.', '!', '?', ',')) and current_duration >= target_duration * 0.8:
+                should_finalize = True
+            
+            # Pause words (natural break)
+            elif word in ['and', 'but', 'so', 'because', 'however', 'then', 'now', 'also'] and current_duration >= target_duration:
+                should_finalize = True
+            
+            # Force break at target duration
+            elif current_duration >= target_duration:
+                should_finalize = True
+            
+            # Force break at max duration
+            elif current_duration >= max_duration:
+                should_finalize = True
+        
+        # Last word
+        if i == len(all_words) - 1:
+            should_finalize = True
+        
+        if should_finalize and current_segment["words"]:
+            result.append({
+                "text": " ".join(current_segment["words"]),
+                "start": current_segment["start"],
+                "end": word_data["end"]
+            })
+            
+            # Start new segment
+            if i < len(all_words) - 1:
+                current_segment = {
+                    "words": [],
+                    "start": word_data["end"]
+                }
+    
+    print(f"Output: {len(result)} Whisper-style segments")
+    if result:
+        total_duration = result[-1]["end"] - result[0]["start"]
+        avg_duration = total_duration / len(result)
+        print(f"Average duration: {avg_duration:.1f}s per segment")
+        print(f"Duration range: {min(s['end']-s['start'] for s in result):.1f}s - {max(s['end']-s['start'] for s in result):.1f}s")
+        print(f"First segment: {result[0].get('text', '')[:80]}...")
+    print(f"========== END WHISPER-STYLE SEGMENTATION ==========\n")
+    
+    return result
+
+
 def smart_segment_youtube_transcript(raw_segments: list) -> list:
     """
     Adaptive segmentation for YouTube transcripts that handles both:
     - Many small segments (1-2 seconds each) → Group them
     - Few large segments (entire transcript as blob) → Split them
     
-    Target: 5-15 second segments for optimal searchability
+    NOW DEFAULTS TO WHISPER-STYLE for better transcript viewer synchronization
     """
     print(f"\n========== SMART SEGMENTATION ==========")
     print(f"Input: {len(raw_segments)} raw segments")
@@ -226,24 +334,11 @@ def smart_segment_youtube_transcript(raw_segments: list) -> list:
     print(f"Average segment duration: {avg_duration:.1f}s")
     print(f"Total duration: {total_duration:.1f}s")
     
-    # Determine strategy based on segment characteristics
-    if len(raw_segments) == 1 or avg_duration > 30:
-        # Single blob or very large segments - need splitting
-        print("Strategy: SPLITTING large segments")
-        result = split_large_segments(raw_segments)
-    elif avg_duration < 5:
-        # Many small segments - need grouping
-        print("Strategy: GROUPING small segments")
-        result = group_small_segments(raw_segments)
-    else:
-        # Segments are already reasonable size
-        print("Strategy: KEEPING segments as-is (already good size)")
-        result = raw_segments
+    # Always use Whisper-style segmentation for consistent timing
+    print("Strategy: WHISPER-STYLE (consistent timing for transcript viewer)")
+    result = whisper_style_segmentation(raw_segments)
     
     print(f"Output: {len(result)} smart segments")
-    if len(result) > 0:
-        print(f"First segment: {result[0].get('text', '')[:80]}...")
-        print(f"Average duration: {total_duration / len(result):.1f}s per segment")
     print(f"========== END SMART SEGMENTATION ==========\n")
     
     return result

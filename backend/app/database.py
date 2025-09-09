@@ -20,8 +20,23 @@ DBNAME = os.getenv("dbname")
 # Construct the SQLAlchemy connection string (URL-encode password to handle special characters)
 DATABASE_URL = f"postgresql+psycopg2://{USER}:{quote_plus(PASSWORD)}@{HOST}:{PORT}/{DBNAME}?sslmode=require"
 
-# Create SQLAlchemy engine
-engine = create_engine(DATABASE_URL)
+# Create SQLAlchemy engine with connection pooling for Supabase
+# pool_pre_ping=True tests connections before using them to handle stale connections
+# pool_recycle=300 recycles connections every 5 minutes (before Supabase timeout)
+# pool_size and max_overflow control the connection pool size
+engine = create_engine(
+    DATABASE_URL,
+    pool_pre_ping=True,  # Test connections before using them
+    pool_size=10,        # Number of connections to maintain in pool
+    max_overflow=20,     # Maximum overflow connections
+    pool_recycle=300,    # Recycle connections every 5 minutes
+    connect_args={
+        "keepalives": 1,
+        "keepalives_idle": 30,
+        "keepalives_interval": 10,
+        "keepalives_count": 5,
+    }
+)
 
 # Create sessionmaker
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
