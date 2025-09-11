@@ -5,6 +5,7 @@ from typing import Optional
 import tempfile
 import subprocess
 from app.core.logging_config import get_logger
+from app.utils.retry import retry_sync
 
 logger = get_logger("aws_utils")
 
@@ -33,6 +34,28 @@ class AWSManager:
         self.bucket_name = os.getenv('AWS_S3_BUCKET')
         logger.info(f"AWS S3 client initialized", extra={"region": self.region, "bucket": self.bucket_name})
         
+        # Validate connection on initialization
+        self._validate_connection()
+    
+    def _validate_connection(self):
+        """Validate S3 connection and bucket accessibility"""
+        try:
+            # Try to list objects in the bucket (lightweight operation)
+            self.s3_client.head_bucket(Bucket=self.bucket_name)
+            logger.info(f"S3 bucket accessible", extra={"bucket": self.bucket_name})
+        except ClientError as e:
+            error_code = e.response['Error']['Code']
+            if error_code == '404':
+                logger.error(f"S3 bucket not found", extra={"bucket": self.bucket_name})
+            elif error_code == '403':
+                logger.error(f"S3 bucket access denied", extra={"bucket": self.bucket_name})
+            else:
+                logger.error(f"S3 connection validation failed", extra={"bucket": self.bucket_name, "error_code": error_code})
+            # Don't raise exception, just log - we'll retry operations later
+        except Exception as e:
+            logger.warning(f"S3 connection validation failed", extra={"bucket": self.bucket_name}, exc_info=True)
+        
+    @retry_sync(max_retries=3, delay=1.0, backoff=2.0)
     def upload_video(self, file_content: bytes, filename: str) -> bool:
         """Upload video to S3 bucket with proper content type and metadata"""
         try:
@@ -124,6 +147,7 @@ class AWSManager:
             logger.error(f"Error getting video duration", extra={"video_path": video_path}, exc_info=True)
             return None
     
+    @retry_sync(max_retries=3, delay=1.0, backoff=2.0)
     def generate_presigned_upload_url(self, filename: str, content_type: str = 'video/mp4', expires_in: int = 3600) -> Optional[dict]:
         """Generate a presigned URL for uploading files directly to S3"""
         try:

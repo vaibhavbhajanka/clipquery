@@ -153,7 +153,7 @@ export default function VideoUpload({ onVideoUploaded }: VideoUploadProps) {
       
       setStatus('Uploading to S3...')
 
-      // Step 2: Upload directly to S3 using presigned URL
+      // Step 2: Upload directly to S3 using presigned URL with retry logic
       const formData = new FormData()
       
       // Add all the fields from the presigned URL
@@ -164,13 +164,62 @@ export default function VideoUpload({ onVideoUploaded }: VideoUploadProps) {
       // Add the file last
       formData.append('file', file)
 
-      const s3Response = await fetch(upload_url, {
-        method: 'POST',
-        body: formData
-      })
+      // Retry logic for S3 upload
+      let s3Response: Response | null = null
+      let lastError: Error | null = null
+      const maxRetries = 3
+      
+      for (let attempt = 0; attempt < maxRetries; attempt++) {
+        try {
+          // Pre-warm connection on first attempt
+          if (attempt === 0) {
+            try {
+              // Pre-flight request to establish connection
+              await fetch(new URL(upload_url).origin, { 
+                method: 'HEAD', 
+                mode: 'no-cors' 
+              }).catch(() => {})
+              console.log('S3 connection pre-warmed')
+            } catch (e) {
+              // Ignore pre-warm errors
+            }
+          }
+          
+          console.log(`S3 upload attempt ${attempt + 1}/${maxRetries}`)
+          
+          s3Response = await fetch(upload_url, {
+            method: 'POST',
+            body: formData
+          })
 
-      if (!s3Response.ok) {
-        throw new Error('Failed to upload to S3')
+          if (s3Response.ok) {
+            console.log('S3 upload successful')
+            break
+          }
+          
+          // Don't retry on 4xx errors (client errors)
+          if (s3Response.status >= 400 && s3Response.status < 500) {
+            throw new Error(`S3 upload failed with status ${s3Response.status}`)
+          }
+          
+          lastError = new Error(`S3 upload failed with status ${s3Response.status}`)
+          
+        } catch (error) {
+          lastError = error as Error
+          console.error(`S3 upload attempt ${attempt + 1} failed:`, error)
+          
+          // Don't retry on the last attempt
+          if (attempt < maxRetries - 1) {
+            // Exponential backoff: 1s, 2s, 4s
+            const delay = Math.pow(2, attempt) * 1000
+            console.log(`Retrying in ${delay}ms...`)
+            await new Promise(resolve => setTimeout(resolve, delay))
+          }
+        }
+      }
+
+      if (!s3Response || !s3Response.ok) {
+        throw lastError || new Error('Failed to upload to S3 after multiple attempts')
       }
 
       setStatus('Completing upload...')
