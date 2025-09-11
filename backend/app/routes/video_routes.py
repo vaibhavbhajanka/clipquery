@@ -184,6 +184,7 @@ async def upload_video(
                 logger.warning(f"Error cleaning up temp file: {e}")
 
 @router.post("/process", response_model=ProcessingResult)
+@retry_async(max_retries=3, delay=1.0, backoff=2.0)
 async def process_video_endpoint(
     request: ProcessRequest,
     db: Session = Depends(get_db)
