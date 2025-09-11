@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import VideoUpload from '@/components/VideoUpload'
 import VideoPlayer from '@/components/SimpleVideoPlayer'
 import SearchBar from '@/components/SearchBar'
@@ -11,6 +11,7 @@ import ChatPanel from '@/components/ChatPanel'
 import { Video, SearchResult, VideoSegment } from '@/lib/types'
 
 // Using Next.js API routes (no direct backend calls)
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
 function formatTime(seconds: number): string {
   const minutes = Math.floor(seconds / 60)
@@ -32,6 +33,23 @@ export default function Home() {
   const [activeResultIndex, setActiveResultIndex] = useState<number>(-1)
   const [videoUrl, setVideoUrl] = useState<string>('')
   const [activeTab, setActiveTab] = useState<'search' | 'chat'>('search')
+
+  // Pre-warm backend on page load
+  useEffect(() => {
+    const warmBackend = async () => {
+      try {
+        await fetch(`${API_BASE_URL}/health`, {
+          method: 'GET',
+          signal: AbortSignal.timeout(5000) // 5 second timeout
+        })
+      } catch (error) {
+        // Silent failure - just warming up the backend
+        console.debug('Backend warm-up ping failed (this is normal):', error)
+      }
+    }
+    
+    warmBackend()
+  }, [])
 
   const fetchTranscript = async (videoId: string) => {
     try {

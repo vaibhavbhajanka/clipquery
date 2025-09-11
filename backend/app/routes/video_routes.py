@@ -13,6 +13,7 @@ from pydantic import BaseModel
 from app.aws_utils import aws_manager
 from app.services.video_service import process_video
 from app.core.logging_config import get_logger
+from app.utils.retry import retry_async
 
 logger = get_logger("routes.video")
 
@@ -34,6 +35,7 @@ class CompleteUploadRequest(BaseModel):
     duration: float = None
 
 @router.post("/get-upload-url")
+@retry_async(max_retries=3, delay=1.0, backoff=2.0)
 async def get_presigned_upload_url(request: PresignedUploadRequest):
     """Generate a presigned URL for direct S3 upload"""
     if not aws_manager:
@@ -58,6 +60,7 @@ async def get_presigned_upload_url(request: PresignedUploadRequest):
     }
 
 @router.post("/complete-upload", response_model=Video)
+@retry_async(max_retries=3, delay=1.0, backoff=2.0)
 async def complete_upload(request: CompleteUploadRequest, db: Session = Depends(get_db)):
     """Complete the upload process by creating database record"""
     try:
