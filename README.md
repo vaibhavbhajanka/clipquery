@@ -67,13 +67,13 @@ graph TB
 
     S3 --> CDN
 
-    style Frontend fill:#e1f5fe
-    style Backend fill:#f3e5f5
-    style DB fill:#e8f5e8
-    style S3 fill:#fff3e0
-    style Pinecone fill:#fce4ec
-    style OpenAI fill:#f1f8e9
-    style CDN fill:#fff8e1
+    style Frontend fill:#e3f2fd,stroke:#1976d2,stroke-width:2px,color:#000
+    style Backend fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,color:#000
+    style DB fill:#e8f5e8,stroke:#388e3c,stroke-width:2px,color:#000
+    style S3 fill:#fff3e0,stroke:#f57c00,stroke-width:2px,color:#000
+    style Pinecone fill:#fce4ec,stroke:#e91e63,stroke-width:2px,color:#000
+    style OpenAI fill:#f1f8e9,stroke:#689f38,stroke-width:2px,color:#000
+    style CDN fill:#fff8e1,stroke:#ff9800,stroke-width:2px,color:#000
 ```
 
 
@@ -102,15 +102,15 @@ flowchart LR
     StoreText --> Search[Semantic Search<br/>Ready for Queries]
     StoreVectors --> Search
 
-    style Upload fill:#e3f2fd
-    style YouTube fill:#e3f2fd
-    style Extract fill:#f3e5f5
-    style Transcribe fill:#e8f5e8
-    style Segment fill:#fff3e0
-    style Embed fill:#fce4ec
-    style StoreText fill:#e8f5e8
-    style StoreVectors fill:#fce4ec
-    style Search fill:#e0f2f1
+    style Upload fill:#e3f2fd,stroke:#1976d2,stroke-width:2px,color:#000
+    style YouTube fill:#e3f2fd,stroke:#1976d2,stroke-width:2px,color:#000
+    style Extract fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,color:#000
+    style Transcribe fill:#e8f5e8,stroke:#388e3c,stroke-width:2px,color:#000
+    style Segment fill:#fff3e0,stroke:#f57c00,stroke-width:2px,color:#000
+    style Embed fill:#fce4ec,stroke:#e91e63,stroke-width:2px,color:#000
+    style StoreText fill:#e8f5e8,stroke:#388e3c,stroke-width:2px,color:#000
+    style StoreVectors fill:#fce4ec,stroke:#e91e63,stroke-width:2px,color:#000
+    style Search fill:#e0f2f1,stroke:#689f38,stroke-width:2px,color:#000
 ```
 
 The video processing pipeline handles both uploaded files and YouTube URLs through a multi-stage approach:
