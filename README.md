@@ -51,7 +51,31 @@ The application accepts video uploads up to 3 minutes in length, providing a nat
 
 ## Technical Architecture
 
-### System Overview
+### System Architecture
+
+```mermaid
+graph TB
+    User[User Browser] --> Frontend[Next.js 15 Frontend<br/>Vercel]
+    User --> CDN[CloudFront CDN<br/>Video Delivery]
+
+    Frontend --> Backend[FastAPI Backend<br/>AWS ECS Fargate]
+
+    Backend --> DB[(PostgreSQL<br/>Supabase)]
+    Backend --> S3[S3 Bucket<br/>Video Storage]
+    Backend --> Pinecone[Pinecone<br/>Vector Database]
+    Backend --> OpenAI[OpenAI API<br/>Whisper + Embeddings + GPT-4]
+
+    S3 --> CDN
+
+    style Frontend fill:#e1f5fe
+    style Backend fill:#f3e5f5
+    style DB fill:#e8f5e8
+    style S3 fill:#fff3e0
+    style Pinecone fill:#fce4ec
+    style OpenAI fill:#f1f8e9
+    style CDN fill:#fff8e1
+```
+
 
 ClipQuery employs a microservices-inspired architecture with clear separation between frontend presentation, backend business logic, and external service integrations. The system is designed for horizontal scalability and can handle both local deployments and cloud-scale operations.
 
@@ -60,9 +84,35 @@ ClipQuery employs a microservices-inspired architecture with clear separation be
 **Infrastructure**: AWS ECS, CloudFront, S3, and Container Registry
 **AI Services**: OpenAI Whisper for transcription, OpenAI embeddings for semantic search
 
-### Key Components
 
 #### Video Processing Pipeline
+
+```mermaid
+flowchart LR
+    Upload[Video Upload<br/>MP4/MOV/AVI/MKV/WebM<br/>≤500MB] --> Extract[Audio Extraction<br/>FFmpeg<br/>75MB → 1.5MB]
+    YouTube[YouTube URL] --> YTTranscript[YouTube Transcript<br/>API/Proxy Fetch]
+
+    Extract --> Transcribe[Whisper Transcription<br/>OpenAI API<br/>Verbose JSON]
+    YTTranscript --> Segment
+
+    Transcribe --> Segment[Intelligent Segmentation<br/>8-second chunks<br/>Sentence boundaries]
+    Segment --> Embed[Generate Embeddings<br/>text-embedding-3-small<br/>1536 dimensions]
+    Embed --> StoreText[(Store Text & Metadata<br/>PostgreSQL<br/>Segments + Timestamps)]
+    Embed --> StoreVectors[(Store Embeddings<br/>Pinecone<br/>1536-dim Vectors)]
+    StoreText --> Search[Semantic Search<br/>Ready for Queries]
+    StoreVectors --> Search
+
+    style Upload fill:#e3f2fd
+    style YouTube fill:#e3f2fd
+    style Extract fill:#f3e5f5
+    style Transcribe fill:#e8f5e8
+    style Segment fill:#fff3e0
+    style Embed fill:#fce4ec
+    style StoreText fill:#e8f5e8
+    style StoreVectors fill:#fce4ec
+    style Search fill:#e0f2f1
+```
+
 The video processing pipeline handles both uploaded files and YouTube URLs through a multi-stage approach:
 
 1. **Video Ingestion**: Supports major formats (MP4, MOV, AVI, MKV, WebM) up to 500MB
@@ -71,51 +121,88 @@ The video processing pipeline handles both uploaded files and YouTube URLs throu
 4. **Segmentation**: Intelligent chunking preserves semantic meaning while optimizing for search
 5. **Embedding Generation**: OpenAI's text-embedding-3-small model creates vector representations
 
-#### Semantic Search Engine
-The search implementation provides both semantic and lexical search capabilities:
 
-- **Vector Search**: Uses Pinecone for similarity-based semantic search
-- **Fallback Search**: PostgreSQL full-text search when vector database is unavailable
-- **Hybrid Results**: Combines semantic understanding with exact phrase matching
 
-#### Scalable Storage Architecture
-ClipQuery implements a sophisticated storage strategy that balances performance, cost, and scalability:
+## Architectural Decisions
 
-- **Presigned S3 URLs**: Direct browser-to-S3 uploads bypass server payload limits
-- **CloudFront Distribution**: Global CDN for optimized video delivery
-- **Local Fallback**: Development-friendly local storage option
-- **Database Optimization**: Efficient video metadata and segment storage
+**Video Upload**
+- **Presigned S3 URLs**: Direct browser-to-S3 uploads bypass Vercel's 4.5MB serverless limit, supporting 500MB video files. Requires CORS configuration but eliminates server bandwidth constraints and enables scalable parallel uploads.
+- **FFmpeg Audio Extraction**: Converts 75MB videos to 1.5MB MP3 audio since Whisper API has a 25MB file limit. 2-3 second processing overhead reduces API costs by 98% while ensuring all videos fit within constraints.
 
-## Engineering Decisions and Trade-offs
+**Processing** 
+- **OpenAI Whisper API**: Cloud transcription service chosen over self-hosting to avoid GPU infrastructure, model management, and scaling complexities. Higher per-request costs but provides superior accuracy with automatic language detection and multilingual support.
 
-### Storage Strategy: Presigned URLs vs Server Upload
+**Search & Storage**
+- **Vector-First Search with Relational Persistence**: Pinecone handles semantic search and returns timestamps from metadata, while PostgreSQL manages video lifecycle, provides complete transcript access, and serves as fallback when vector search is unavailable.
 
-**Decision**: Implement presigned S3 URLs for direct browser uploads
-**Trade-off**: Added complexity in exchange for unlimited file size support
+**User Experience**
+- **WebSocket Chat Streaming**: Real-time bidirectional communication delivers AI responses chunk-by-chunk as they generate. Connection management overhead justified by 60-70% improvement in perceived performance compared to waiting for complete responses.
+- **YouTube Proxy Integration**: Proxy infrastructure handles cloud provider IP blocks for YouTube transcript access. Adds deployment complexity but enables seamless integration with YouTube's vast content library.
 
-Traditional server-mediated uploads hit Vercel's 4.5MB serverless function limit, making video uploads impractical. Presigned URLs enable direct browser-to-S3 transfers, supporting files up to 500MB while maintaining security through time-limited, scoped permissions. This approach requires careful CORS configuration and error handling but eliminates server bandwidth constraints entirely.
+**Infrastructure**
+- **ECS Fargate Containers**: Serverless container orchestration eliminates infrastructure management compared to self-managed Kubernetes. AWS vendor lock-in accepted for operational simplicity, auto-scaling, and zero-downtime deployments.
+- **Retry with Exponential Backoff**: Automatic retry for transient failures with 3 attempts and exponential delays (1s→2s→4s). Prevents cascade failures during service disruptions while avoiding aggressive retry storms.
 
-### Transcription: Cloud API vs Self-hosted
+## User Flow
 
-**Decision**: Use OpenAI Whisper API over self-hosted solutions
-**Trade-off**: API costs vs infrastructure complexity and accuracy
+### User Interaction Flow
 
-Self-hosting Whisper would require GPU infrastructure, model management, and significant operational overhead. OpenAI's hosted Whisper provides superior accuracy with multilingual support, automatic punctuation, and speaker identification. The cost scales linearly with usage, making it economical for MVP development while maintaining production-ready quality.
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant F as Frontend
+    participant B as Backend
+    participant S3 as AWS S3
+    participant W as Whisper API
+    participant P as Pinecone
+    participant G as GPT-4
 
-### Search Implementation: Vector + Lexical Hybrid
+    Note over U,G: Video Upload & Processing Flow
 
-**Decision**: Implement both semantic (Pinecone) and lexical (PostgreSQL) search with graceful fallback
-**Trade-off**: System complexity vs search quality and reliability
+    U->>F: Uploads video file (≤500MB)
+    F->>B: Requests presigned S3 URL
+    B->>S3: Generates presigned upload URL
+    S3->>B: Returns upload URL & fields
+    B->>F: Sends presigned URL
+    F->>S3: Uploads video directly to S3
+    S3->>F: Confirms upload success
+    F->>B: Notifies upload completion
 
-Pure keyword search misses semantic relationships ("AI" vs "artificial intelligence"), while pure vector search can miss exact phrases. The hybrid approach provides semantic understanding through embeddings while maintaining exact phrase matching capabilities. Graceful fallback to PostgreSQL ensures system reliability when external vector services are unavailable.
+    B->>B: Extracts audio with FFmpeg (75MB→1.5MB)
+    B->>W: Sends audio for transcription
+    W->>B: Returns timestamped segments
+    B->>B: Intelligent segmentation (8-second chunks)
+    B->>B: Generates embeddings (text-embedding-3-small)
+    B->>P: Stores vectors with metadata
+    P->>B: Confirms storage
+    B->>F: Status: Ready for search
 
-### YouTube Integration: API + Proxy Architecture
+    Note over U,G: Search & Chat Interaction
 
-**Decision**: Implement YouTube transcript fetching with proxy support for IP restrictions
-**Trade-off**: Additional infrastructure vs comprehensive content coverage
+    U->>F: Enters search query "When does speaker mention AI?"
+    F->>B: Sends search request
+    B->>B: Generates query embedding
+    B->>P: Vector similarity search
+    P->>B: Returns matching segments with scores
+    B->>F: Sends ranked results with timestamps
+    F->>U: Displays search results
 
-YouTube blocks most cloud provider IPs from transcript access, requiring proxy infrastructure for cloud deployments. This adds operational complexity but enables seamless integration with YouTube content, significantly expanding the platform's utility. The proxy configuration is optional, allowing local development while supporting production scalability.
+    U->>F: Clicks timestamp to jump to moment
+    F->>F: Seeks video to timestamp
 
+    U->>F: Opens chat panel
+    F->>B: Establishes WebSocket connection
+    B->>F: Confirms WebSocket ready
+
+    U->>F: Sends chat message "Summarize main points"
+    F->>B: Forwards message via WebSocket
+    B->>P: Retrieves relevant video context
+    P->>B: Returns context segments
+    B->>G: Sends context + user query
+    G->>B: Streams response chunks
+    B->>F: Forwards chunks via WebSocket
+    F->>U: Displays streaming response in real-time
+```
 ## Deployment Architecture
 
 ### Cloud Infrastructure 
@@ -125,4 +212,3 @@ YouTube blocks most cloud provider IPs from transcript access, requiring proxy i
 - **S3**: Object storage for video files and static assets
 - **RDS/Supabase**: Managed PostgreSQL with automatic backups
 - **ECR**: Private container registry
-
