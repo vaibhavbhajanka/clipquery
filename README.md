@@ -77,12 +77,12 @@ graph TB
 ```
 
 
-ClipQuery employs a microservices-inspired architecture with clear separation between frontend presentation, backend business logic, and external service integrations. The system is designed for horizontal scalability and can handle both local deployments and cloud-scale operations.
+ClipQuery employs an architecture with clear separation between frontend presentation, backend business logic, and external service integrations. The system is designed for horizontal scalability and can handle cloud-scale operations.
 
-**Frontend**: Next.js 15 with React 19, TypeScript, and Tailwind CSS
-**Backend**: FastAPI with Python 3.11, PostgreSQL, and vector embeddings
-**Infrastructure**: AWS ECS, CloudFront, S3, and Container Registry
-**AI Services**: OpenAI Whisper for transcription, OpenAI embeddings for semantic search
+**Frontend**: Next.js 15 with React 19, TypeScript, and Tailwind CSS<br>
+**Backend**: FastAPI with Python 3.11, PostgreSQL, and vector embeddings<br>
+**Infrastructure**: AWS ECS, CloudFront, S3, and Container Registry<br>
+**AI Services**: OpenAI Whisper for transcription, OpenAI embeddings for semantic search<br>
 
 
 #### Video Processing Pipeline
@@ -210,5 +210,5 @@ sequenceDiagram
 - **Application Load Balancer**: Traffic distribution and SSL termination
 - **CloudFront**: Global CDN with edge caching
 - **S3**: Object storage for video files and static assets
-- **RDS/Supabase**: Managed PostgreSQL with automatic backups
+- **Supabase**: Managed PostgreSQL with automatic backups
 - **ECR**: Private container registry
